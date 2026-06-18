@@ -1,6 +1,7 @@
 "use client";
 
 import { insertError } from "@/app/actions";
+import { useLoadingActions } from "@/stores/useLoadingStore";
 import { useUserData, useUserProfile } from "@/stores/useUserStore";
 import { LOGO_PATH, NAV_LINKS } from "@/utils/constants";
 import { isAppError } from "@/utils/functions";
@@ -11,7 +12,7 @@ import { notifications } from "@mantine/notifications";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import AdminNavigationDrawer from "./AdminNavigationDrawer";
 import ColorModeToggle from "./ColorModeToggle";
 import MobileDrawer from "./MobileDrawer";
 import ProfileDropdown from "./ProfileDropdown";
@@ -21,13 +22,14 @@ const Header = () => {
   const pathname = usePathname();
   const userData = useUserData();
   const userProfile = useUserProfile();
+  const { setIsLoading } = useLoadingActions();
 
   const [opened, { open, close }] = useDisclosure(false);
-
-  const [isLoading, setIsLoading] = useState(false);
+  const [mobileNavOpened, { open: openMobileNav, close: closeMobileNav }] = useDisclosure(false);
 
   const isAdmin = userProfile?.user_role === "ADMIN";
   const isOnboarding = pathname === "/user/onboarding";
+  const isAdminPath = pathname.startsWith("/admin");
   const isNotAdminRoute = !pathname.includes("/admin");
   const isShopRoute = pathname.includes("/shop");
 
@@ -83,42 +85,49 @@ const Header = () => {
     >
       <Container size="xl">
         <Flex h={64} align="center" justify="space-between">
-          {/* Logo */}
-          <Link
-            href="/"
-            onClick={handleLogoClick}
-            style={{ textDecoration: "none", color: "inherit" }}
-          >
-            <Group gap="xs" style={{ cursor: "pointer" }}>
-              <Image alt="logo" width={80} height={35} src={LOGO_PATH} priority />
-              <Stack gap={0}>
-                <Text fw={700} size="sm" lh={1}>
-                  MAGIC COLLAR
-                </Text>
-                <Text size="xs" c="dimmed" lh={1}>
-                  Fit &amp; Firm
-                </Text>
-              </Stack>
-            </Group>
-          </Link>
+          <Group>
+            {isAdminPath ? (
+              <Burger hiddenFrom="lg" opened={mobileNavOpened} onClick={openMobileNav} size={16} />
+            ) : null}
+            {/* Logo */}
+            <Link
+              href="/"
+              onClick={handleLogoClick}
+              style={{ textDecoration: "none", color: "inherit" }}
+            >
+              <Group gap="xs" style={{ cursor: "pointer" }}>
+                <Image alt="logo" width={80} height={35} src={LOGO_PATH} priority />
+                <Stack gap={0}>
+                  <Text fw={700} size="sm" lh={1}>
+                    {isAdminPath ? "Admin" : "MAGIC COLLAR"}
+                  </Text>
+                  <Text size="xs" c="dimmed" lh={1}>
+                    {isAdminPath ? "Analytics & Operations" : "  Fit & Firm"}
+                  </Text>
+                </Stack>
+              </Group>
+            </Link>
+          </Group>
 
           {/* Desktop nav */}
-          <Group gap="xl" visibleFrom="md">
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link.label}
-                href={link.href}
-                style={{
-                  fontWeight: 500,
-                  fontSize: "var(--mantine-font-size-sm)",
-                  textDecoration: "none",
-                  color: "var(--mantine-color-dimmed)",
-                }}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </Group>
+          {!isAdminPath ? (
+            <Group gap="xl" visibleFrom="md">
+              {NAV_LINKS.map((link) => (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  style={{
+                    fontWeight: 500,
+                    fontSize: "var(--mantine-font-size-sm)",
+                    textDecoration: "none",
+                    color: "var(--mantine-color-dimmed)",
+                  }}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </Group>
+          ) : null}
 
           {/* Desktop actions */}
           <Group gap="sm" visibleFrom="md">
@@ -134,7 +143,7 @@ const Header = () => {
                 Admin Dashboard
               </Button>
             ) : null}
-            {!isOnboarding && !isAdmin && !isShopRoute ? (
+            {!isOnboarding && !isAdmin && !isShopRoute && !isAdminPath ? (
               <Button component={Link} href="/shop">
                 Shop Now
               </Button>
@@ -153,11 +162,11 @@ const Header = () => {
       <MobileDrawer
         opened={opened}
         onClose={close}
-        onLogoClick={handleLogoClick}
         isOnboarding={isOnboarding}
         isAdmin={isAdmin}
         handleLogout={handleLogout}
       />
+      <AdminNavigationDrawer opened={mobileNavOpened} onClose={closeMobileNav} />
     </Box>
   );
 };

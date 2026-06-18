@@ -7,34 +7,26 @@ import { IconArrowRight, IconLogout, IconReceipt, IconUser, IconX } from "@table
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MouseEvent } from "react";
 
 type Props = {
   opened: boolean;
   onClose: () => void;
-  onLogoClick: (e: MouseEvent<HTMLDivElement, globalThis.MouseEvent>) => void;
   isOnboarding: boolean;
   isAdmin: boolean;
   handleLogout: () => void;
 };
 
-const MobileDrawer = ({
-  opened,
-  onClose,
-  onLogoClick,
-  isOnboarding,
-  isAdmin,
-  handleLogout,
-}: Props) => {
+const MobileDrawer = ({ opened, onClose, isOnboarding, isAdmin, handleLogout }: Props) => {
   const userProfile = useUserProfile();
   const pathname = usePathname();
+
+  const isAdminPath = pathname.startsWith("/admin");
 
   return (
     <Drawer
       opened={opened}
       onClose={onClose}
       position="right"
-      size="100%"
       withCloseButton={false}
       styles={{
         body: { padding: 0, height: "100%", display: "flex", flexDirection: "column" },
@@ -57,13 +49,7 @@ const MobileDrawer = ({
             flexShrink: 0,
           }}
         >
-          <Group
-            gap="xs"
-            onClick={(e) => {
-              onClose();
-              onLogoClick(e);
-            }}
-          >
+          <Group gap="xs">
             <Image alt="logo" width={72} height={32} src={LOGO_PATH} priority />
             <Stack gap={0}>
               <Text fw={700} size="sm" lh={1}>
@@ -100,52 +86,56 @@ const MobileDrawer = ({
           <Container size="xs" py="xl">
             <Stack gap="lg">
               {/* Nav links */}
-              <Stack gap={0}>
-                <Text
-                  size="xs"
-                  c="dimmed"
-                  fw={700}
-                  tt="uppercase"
-                  style={{ letterSpacing: "0.1em" }}
-                  mb="sm"
-                >
-                  Navigation
-                </Text>
-                {NAV_LINKS.map((link, i) => (
-                  <Box key={link.label}>
-                    <Link
-                      href={link.href}
-                      onClick={onClose}
-                      style={{
-                        textDecoration: "none",
-                        color: "inherit",
-                        fontWeight: 600,
-                        fontSize: "var(--mantine-font-size-md)",
-                        paddingTop: "var(--mantine-spacing-sm)",
-                        paddingBottom: "var(--mantine-spacing-sm)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        transition: "color 0.15s",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.color = "var(--mantine-color-red-5)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.color = "";
-                      }}
+              {!isAdminPath ? (
+                <>
+                  <Stack gap={0}>
+                    <Text
+                      size="xs"
+                      c="dimmed"
+                      fw={700}
+                      tt="uppercase"
+                      style={{ letterSpacing: "0.1em" }}
+                      mb="sm"
                     >
-                      {link.label}
-                      <IconArrowRight size={16} style={{ opacity: 0.4 }} />
-                    </Link>
-                    {i < NAV_LINKS.length - 1 && <Divider />}
-                  </Box>
-                ))}
-              </Stack>
+                      Navigation
+                    </Text>
+                    {NAV_LINKS.map((link, i) => (
+                      <Box key={link.label}>
+                        <Link
+                          href={link.href}
+                          onClick={onClose}
+                          style={{
+                            textDecoration: "none",
+                            color: "inherit",
+                            fontWeight: 600,
+                            fontSize: "var(--mantine-font-size-md)",
+                            paddingTop: "var(--mantine-spacing-sm)",
+                            paddingBottom: "var(--mantine-spacing-sm)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            transition: "color 0.15s",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = "var(--mantine-color-red-5)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = "";
+                          }}
+                        >
+                          {link.label}
+                          <IconArrowRight size={16} style={{ opacity: 0.4 }} />
+                        </Link>
+                        {i < NAV_LINKS.length - 1 && <Divider />}
+                      </Box>
+                    ))}
+                  </Stack>
 
-              <Divider />
+                  <Divider />
+                </>
+              ) : null}
 
-              {!isOnboarding && !isAdmin ? (
+              {!isOnboarding && !isAdmin && !isAdminPath ? (
                 <Group justify="center" grow>
                   <Button component={Link} href="/shop">
                     Shop Now
@@ -175,32 +165,39 @@ const MobileDrawer = ({
                         </Stack>
                       }
                     />
-                    <Button
-                      leftSection={<IconUser size={14} />}
-                      variant="light"
-                      component={Link}
-                      href="/user/profile"
-                      color="gray"
-                    >
-                      Profile
-                    </Button>
-                    <Button
-                      leftSection={<IconReceipt size={14} />}
-                      component={Link}
-                      href="/user/order"
-                      variant="light"
-                      color="gray"
-                    >
-                      Orders
-                    </Button>
 
-                    <Button
-                      color="red"
-                      leftSection={<IconLogout size={14} />}
-                      onClick={handleLogout}
-                    >
-                      Logout
-                    </Button>
+                    {!isAdminPath ? (
+                      <>
+                        <Button
+                          leftSection={<IconUser size={14} />}
+                          variant="light"
+                          component={Link}
+                          href="/user/profile"
+                          color="gray"
+                        >
+                          Profile
+                        </Button>
+                        <Button
+                          leftSection={<IconReceipt size={14} />}
+                          component={Link}
+                          href="/user/order"
+                          variant="light"
+                          color="gray"
+                        >
+                          Orders
+                        </Button>
+                      </>
+                    ) : null}
+
+                    {!isAdminPath ? (
+                      <Button
+                        color="red"
+                        leftSection={<IconLogout size={14} />}
+                        onClick={handleLogout}
+                      >
+                        Logout
+                      </Button>
+                    ) : null}
                   </Stack>
                 ) : null}
 

@@ -1,7 +1,7 @@
 import { insertError } from "@/app/actions";
 import { useIsLoading, useLoadingActions } from "@/stores/useLoadingStore";
 import { useUserData, useUserProfile } from "@/stores/useUserStore";
-import { isAppError } from "@/utils/functions";
+import { generateAvatarColor, isAppError } from "@/utils/functions";
 import { supabaseClient } from "@/utils/supabase/client";
 import {
   Avatar,
@@ -85,7 +85,14 @@ const ProfileDropdown = () => {
             }}
           >
             <Group gap="sm">
-              <Avatar color="red" radius="xl" src={userProfile?.user_avatar}>
+              <Avatar
+                radius="xl"
+                src={userProfile?.user_avatar}
+                color="white"
+                style={{
+                  backgroundColor: generateAvatarColor(userProfile?.user_id),
+                }}
+              >
                 {userProfile?.user_first_name[0].toUpperCase()}
                 {userProfile?.user_last_name[0].toUpperCase()}
               </Avatar>
@@ -144,7 +151,14 @@ const ProfileDropdown = () => {
             }}
           >
             <Group gap="sm">
-              <Avatar color="blue" radius="xl" src={userProfile?.user_avatar}>
+              <Avatar
+                radius="xl"
+                src={userProfile?.user_avatar}
+                color="white"
+                style={{
+                  backgroundColor: generateAvatarColor(userProfile?.user_id),
+                }}
+              >
                 {userProfile?.user_first_name[0].toUpperCase()}
                 {userProfile?.user_last_name[0].toUpperCase()}
               </Avatar>

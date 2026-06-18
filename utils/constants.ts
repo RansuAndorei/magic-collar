@@ -3,11 +3,21 @@ import {
   IconBrandInstagram,
   IconBrandTiktok,
   IconBrandYoutube,
+  IconCar,
+  IconChartBar,
+  IconClipboardList,
   IconHeadset,
+  IconMail,
+  IconMapPin,
+  IconMessageCircle,
   IconPackage,
+  IconPhone,
+  IconPhotoScan,
   IconSettings2,
   IconShieldCheck,
+  IconShoppingBag,
   IconTag,
+  IconTags,
   IconTruckDelivery,
 } from "@tabler/icons-react";
 import {
@@ -175,10 +185,6 @@ export const FOOTER_LINKS = {
     {
       label: "FAQs",
       link: "faq",
-    },
-    {
-      label: "Returns",
-      link: "returns",
     },
     {
       label: "Track Order",
@@ -383,4 +389,37 @@ export const PAYMENT_STATUS_OPTIONS: { value: OrderPaymentStatusEnum | "ALL"; la
   { value: "PARTIALLY_PAID", label: "Partially Paid" },
   { value: "PAID", label: "Paid" },
   { value: "OVERDUE", label: "Overdue" },
+];
+
+export const ADMIN_NAV_GROUP = [
+  {
+    label: "Overview",
+    links: [{ label: "Analytics", icon: IconChartBar, meta: "Sales, demand, batch timing" }],
+  },
+  {
+    label: "Catalog",
+    links: [
+      { label: "Cars & Magic Collars", icon: IconCar, meta: "Fitment and collar records" },
+      { label: "Makes & Models", icon: IconTags, meta: "Reference lists" },
+      { label: "Inventory", icon: IconPackage, meta: "Stock quantities" },
+    ],
+  },
+  {
+    label: "Fulfillment",
+    links: [
+      { label: "Orders", icon: IconShoppingBag, meta: "Item status and delivery setup" },
+      { label: "Payment Proofs", icon: IconPhotoScan, meta: "Approve or reject uploads" },
+      { label: "Batches", icon: IconClipboardList, meta: "Batch status updates" },
+      { label: "Delivery Details", icon: IconTruckDelivery, meta: "Couriers and pickup addresses" },
+    ],
+  },
+  {
+    label: "Business",
+    links: [
+      { label: "Pickup Addresses", icon: IconMapPin, meta: "Branch and pickup list" },
+      { label: "Email", icon: IconMail, meta: "Support inboxes" },
+      { label: "Phone", icon: IconPhone, meta: "Published numbers" },
+      { label: "Messenger", icon: IconMessageCircle, meta: "Chat channels" },
+    ],
+  },
 ];

@@ -3,7 +3,7 @@
 import { insertError, uploadFile } from "@/app/actions";
 import { useUserActions, useUserData, useUserProfile } from "@/stores/useUserStore";
 import { MAX_FILE_SIZE } from "@/utils/constants";
-import { isAppError } from "@/utils/functions";
+import { generateAvatarColor, isAppError } from "@/utils/functions";
 import { supabaseClient } from "@/utils/supabase/client";
 import {
   Avatar,
@@ -202,7 +202,11 @@ const UserProfileSettingsPage = () => {
                   src={userProfileData.user_avatar}
                   size={120}
                   radius={120}
-                  style={{ border: `4px solid ${theme.colors.dark[5]}` }}
+                  style={{
+                    border: `4px solid ${theme.colors.dark[5]}`,
+                    backgroundColor: generateAvatarColor(userProfile?.user_id),
+                  }}
+                  color="white"
                 >
                   {userProfile.user_first_name.charAt(0)}
                   {userProfile.user_last_name.charAt(0)}
