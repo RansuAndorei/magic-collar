@@ -1,0 +1,19 @@
+.section-base {
+  background: var(--mantine-color-body);
+}
+
+.section-alt {
+  background: var(--mantine-color-body);
+}
+
+[data-mantine-color-scheme="dark"] .section-alt {
+  background: var(--mantine-color-dark-8);
+}
+
+[data-mantine-color-scheme="light"] .section-alt {
+  background: var(--mantine-color-gray-0);
+}
+
+html {
+  scroll-behavior: smooth;
+}
