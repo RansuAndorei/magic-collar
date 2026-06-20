@@ -197,13 +197,13 @@ DECLARE
   input_search TEXT := NULLIF(TRIM(COALESCE(input_data->>'search', '')), '');
   input_order_status TEXT := COALESCE(input_data->>'orderStatus', 'ALL');
   input_payment_status TEXT := COALESCE(input_data->>'paymentStatus', 'ALL');
-  input_order_number INT;
 
   var_total_count INT := 0;
   var_orders JSONB := '[]'::JSONB;
+  var_order_number INT;
 BEGIN
   IF input_search ~ '^[0-9]+$' AND length(input_search) <= 9 THEN
-    input_order_number := input_search::INT;
+    var_order_number := input_search::INT;
   END IF;
 
   WITH filtered_orders AS (
@@ -229,7 +229,7 @@ BEGIN
       )
       AND (
         input_search IS NULL
-        OR order_number = input_order_number
+        OR order_number = var_order_number
         OR EXISTS (
           SELECT 1
           FROM order_item_table
@@ -777,5 +777,277 @@ BEGIN
   );
 
   RETURN return_data;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_admin_catalog_cars_page(input_data JSONB)
+RETURNS JSONB
+AS $$
+DECLARE
+  input_page INTEGER := (input_data->>'page')::INTEGER;
+  input_records_per_page INTEGER := (input_data->>'recordsPerPage')::INTEGER;
+  input_sort_column TEXT := (input_data->>'sortColumnAccessor')::TEXT;
+  input_sort_direction TEXT := (input_data->>'sortDirection')::TEXT;
+  input_search TEXT := TRIM(COALESCE(input_data->>'search', ''));
+  input_status BOOLEAN := (input_data->>'status')::BOOLEAN;
+
+  var_limit INTEGER := input_records_per_page;
+  var_offset INTEGER := (input_page - 1) * input_records_per_page;
+  var_ascending BOOLEAN := (input_sort_direction = 'asc');
+  var_search_pattern TEXT;
+
+  var_total_records INTEGER;
+  var_records JSONB;
+BEGIN
+  IF input_search <> '' THEN
+    var_search_pattern := '%' || input_search || '%';
+  END IF;
+
+  SELECT COUNT(*)
+  INTO var_total_records
+  FROM car_table
+  INNER JOIN make_table ON make_id = car_make_id
+  INNER JOIN model_table ON model_id = car_model_id
+  WHERE (
+    input_search = ''
+    OR car_model_code ILIKE var_search_pattern
+    OR make ILIKE var_search_pattern
+    OR model ILIKE var_search_pattern
+  )
+  AND (
+    input_status IS NULL
+    OR car_is_available = input_status
+  )
+  AND car_is_disabled = false;
+
+  IF var_total_records = 0 THEN
+    RETURN JSONB_BUILD_OBJECT('records', '[]'::jsonb, 'totalRecords', 0);
+  END IF;
+
+  WITH page AS (
+    SELECT car_table.*
+    FROM car_table
+    INNER JOIN make_table ON make_id = car_make_id
+    INNER JOIN model_table ON model_id = car_model_id
+    INNER JOIN magic_collar_table ON magic_collar_id = car_magic_collar_id
+    WHERE (
+      input_search = ''
+      OR car_model_code ILIKE var_search_pattern
+      OR make ILIKE var_search_pattern
+      OR model ILIKE var_search_pattern
+    )
+    AND (
+      input_status IS NULL
+      OR car_is_available = input_status
+    )
+    AND car_is_disabled = false
+    ORDER BY
+      CASE WHEN input_sort_column = 'magic_collar_stock_quantity' AND var_ascending
+        THEN magic_collar_stock_quantity END ASC,
+      CASE WHEN input_sort_column = 'magic_collar_stock_quantity' AND NOT var_ascending
+        THEN magic_collar_stock_quantity END DESC,
+      CASE WHEN input_sort_column = 'magic_collar_price' AND var_ascending
+        THEN magic_collar_price END ASC,
+      CASE WHEN input_sort_column = 'magic_collar_price' AND NOT var_ascending
+        THEN magic_collar_price END DESC,
+      CASE WHEN input_sort_column NOT IN ('magic_collar_stock_quantity', 'magic_collar_price') AND var_ascending
+        THEN car_date_created END ASC,
+      CASE WHEN input_sort_column NOT IN ('magic_collar_stock_quantity', 'magic_collar_price') AND NOT var_ascending
+        THEN car_date_created END DESC
+    LIMIT var_limit OFFSET var_offset
+  )
+  SELECT COALESCE(
+    JSONB_AGG(
+      TO_JSONB(page.*) ||
+      JSONB_BUILD_OBJECT(
+        'car_make', TO_JSONB(make_table.*),
+        'car_model', TO_JSONB(model_table.*),
+        'car_magic_collar', TO_JSONB(magic_collar_table.*),
+        'car_image_attachment', TO_JSONB(attachment_table.*)
+      )
+    ),
+    '[]'::JSONB
+  )
+  INTO var_records
+  FROM page
+  INNER JOIN make_table ON make_id = page.car_make_id
+  INNER JOIN model_table ON model_id = page.car_model_id
+  INNER JOIN magic_collar_table ON magic_collar_id = page.car_magic_collar_id
+  INNER JOIN attachment_table ON attachment_id = page.car_image_attachment_id;
+
+  RETURN JSONB_BUILD_OBJECT('records', var_records, 'totalRecords', var_total_records);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION create_car(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_make TEXT := (input_data->>'make')::TEXT;
+  input_model TEXT := (input_data->>'model')::TEXT;
+  input_model_code TEXT := input_data->>'modelCode';
+  input_year_start INT := (input_data->>'yearStart')::INT;
+  input_year_end INT := NULLIF(input_data->>'yearEnd', '')::INT;
+  input_magic_collar_id UUID := (input_data->>'magicCollarId')::UUID;
+  input_is_available BOOLEAN := (input_data->>'isAvailable')::BOOLEAN;
+  input_user_id UUID := (input_data->>'userId')::UUID;
+  input_attachment_data JSONB := (input_data->>'attachmentData')::JSONB;
+
+  var_make_id UUID;
+  var_model_id UUID;
+  var_attachment_id UUID;
+BEGIN
+  SELECT make_id
+    INTO var_make_id
+    FROM make_table
+    WHERE make = input_make
+      AND make_is_disabled = false;
+
+  IF var_make_id IS NULL THEN
+    INSERT INTO make_table (make)
+    VALUES (input_make)
+    RETURNING make_id
+    INTO var_make_id;
+
+    INSERT INTO model_table (model, model_make_id)
+    VALUES (input_model, var_make_id)
+    RETURNING model_id
+    INTO var_model_id;
+  ELSE
+    SELECT model_id
+      INTO var_model_id
+      FROM model_table
+      WHERE model = input_model
+        AND model_make_id = var_make_id
+        AND model_is_disabled = false;
+
+    IF var_model_id IS NULL THEN
+      INSERT INTO model_table (model, model_make_id)
+      VALUES (input_model, var_make_id)
+      RETURNING model_id
+      INTO var_model_id;
+    END IF;
+  END IF;
+
+  INSERT INTO attachment_table (
+    attachment_name,
+    attachment_path,
+    attachment_bucket,
+    attachment_mime_type,
+    attachment_size
+  ) VALUES (
+    (input_attachment_data->>'attachment_name'),
+    (input_attachment_data->>'attachment_path'),
+    (input_attachment_data->>'attachment_bucket'),
+    (input_attachment_data->>'attachment_mime_type'),
+    (input_attachment_data->>'attachment_size')::BIGINT
+  )
+  RETURNING attachment_id
+  INTO var_attachment_id;
+
+  INSERT INTO car_table (
+    car_model_code,
+    car_model_year_start,
+    car_model_year_end,
+    car_make_id,
+    car_model_id,
+    car_magic_collar_id,
+    car_image_attachment_id,
+    car_created_by_admin_user_id,
+    car_is_available
+  ) VALUES (
+    input_model_code,
+    input_year_start,
+    input_year_end,
+    var_make_id,
+    var_model_id,
+    input_magic_collar_id,
+    var_attachment_id,
+    input_user_id,
+    input_is_available
+  );
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION update_car(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_car_id UUID := (input_data->>'carId')::UUID;
+  input_make TEXT := (input_data->>'make')::TEXT;
+  input_model TEXT := (input_data->>'model')::TEXT;
+  input_model_code TEXT := input_data->>'modelCode';
+  input_year_start INT := (input_data->>'yearStart')::INT;
+  input_year_end INT := NULLIF(input_data->>'yearEnd', '')::INT;
+  input_magic_collar_id UUID := (input_data->>'magicCollarId')::UUID;
+  input_is_available BOOLEAN := (input_data->>'isAvailable')::BOOLEAN;
+
+  input_attachment_data JSONB := (input_data->>'attachmentData')::JSONB;
+
+  var_make_id UUID;
+  var_model_id UUID;
+  var_attachment_id UUID;
+BEGIN
+  SELECT make_id
+    INTO var_make_id
+    FROM make_table
+    WHERE make = input_make
+      AND make_is_disabled = false;
+
+  IF var_make_id IS NULL THEN
+    INSERT INTO make_table (make)
+    VALUES (input_make)
+    RETURNING make_id
+    INTO var_make_id;
+
+    INSERT INTO model_table (model, model_make_id)
+    VALUES (input_model, var_make_id)
+    RETURNING model_id
+    INTO var_model_id;
+  ELSE
+    SELECT model_id
+      INTO var_model_id
+      FROM model_table
+      WHERE model = input_model
+        AND model_make_id = var_make_id
+        AND model_is_disabled = false;
+
+    IF var_model_id IS NULL THEN
+      INSERT INTO model_table (model, model_make_id)
+      VALUES (input_model, var_make_id)
+      RETURNING model_id
+      INTO var_model_id;
+    END IF;
+  END IF;
+
+  IF input_attachment_data IS NOT NULL THEN
+    INSERT INTO attachment_table (
+      attachment_name,
+      attachment_path,
+      attachment_bucket,
+      attachment_mime_type,
+      attachment_size
+    ) VALUES (
+      (input_attachment_data->>'attachment_name'),
+      (input_attachment_data->>'attachment_path'),
+      (input_attachment_data->>'attachment_bucket'),
+      (input_attachment_data->>'attachment_mime_type'),
+      (input_attachment_data->>'attachment_size')::BIGINT
+    )
+    RETURNING attachment_id
+    INTO var_attachment_id;
+  END IF;
+
+  UPDATE car_table
+  SET
+    car_model_code = input_model_code,
+    car_model_year_start = input_year_start,
+    car_model_year_end = input_year_end,
+    car_make_id = var_make_id,
+    car_model_id = var_model_id,
+    car_magic_collar_id = input_magic_collar_id,
+    car_image_attachment_id = COALESCE(var_attachment_id, car_image_attachment_id),
+    car_is_available = input_is_available
+  WHERE car_id = input_car_id;
 END;
 $$ LANGUAGE plpgsql;

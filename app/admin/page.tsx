@@ -27,7 +27,6 @@ import {
   IconBuildingStore,
   IconCar,
   IconCheck,
-  IconChevronRight,
   IconClipboardCheck,
   IconClock,
   IconCreditCard,
@@ -37,6 +36,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import AdminSidebar from "./components/AdminSidebar";
 
 const summaryCards = [
   { label: "Pending Proofs", value: "6", detail: "Needs payment review", icon: IconPhotoScan },
@@ -90,56 +90,6 @@ const workflowCards = [
     icon: IconBuildingStore,
   },
 ];
-
-export const AdminSidebar = () => (
-  <Stack gap="lg">
-    <Stack gap={2}>
-      <Text size="xs" fw={800} c="red.5" tt="uppercase">
-        Magic Collar
-      </Text>
-      <Title order={2} size="h3">
-        Admin
-      </Title>
-    </Stack>
-
-    <Stack gap="md">
-      {ADMIN_NAV_GROUP.map((group) => (
-        <Stack key={group.label} gap={6}>
-          <Text size="xs" c="dimmed" fw={700} tt="uppercase">
-            {group.label}
-          </Text>
-          {group.links.map(({ label, meta, icon: Icon }) => {
-            const isActive = label === "Analytics";
-
-            return (
-              <Group
-                key={label}
-                gap="sm"
-                wrap="nowrap"
-                p="xs"
-                bg={isActive ? "var(--mantine-color-red-light)" : undefined}
-                style={{ borderRadius: rem(8) }}
-              >
-                <ThemeIcon variant="light" color="red" size={34} radius="md">
-                  <Icon size={18} />
-                </ThemeIcon>
-                <Box flex={1}>
-                  <Text size="sm" fw={700} lh={1.2}>
-                    {label}
-                  </Text>
-                  <Text size="xs" c="dimmed" lh={1.3}>
-                    {meta}
-                  </Text>
-                </Box>
-                <IconChevronRight size={16} color="var(--mantine-color-dimmed)" />
-              </Group>
-            );
-          })}
-        </Stack>
-      ))}
-    </Stack>
-  </Stack>
-);
 
 export default function AdminPage() {
   const router = useRouter();

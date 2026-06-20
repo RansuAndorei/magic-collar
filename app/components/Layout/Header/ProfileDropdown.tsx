@@ -43,7 +43,6 @@ const ProfileDropdown = () => {
         message: "Something went wrong. Please try again later.",
         color: "red",
       });
-
       if (isAppError(e)) {
         await insertError(supabaseClient, {
           errorTableInsert: {

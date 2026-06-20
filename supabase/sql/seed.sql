@@ -1,3 +1,6 @@
+INSERT INTO user_table (user_id, user_first_name, user_last_name, user_email, user_phone_number, user_role)
+VALUES ('8b9f19a9-c39a-4138-929e-1402f76701fa', 'Magic Collar', 'Admin', 'admin@gmail.com', '9123456789', 'ADMIN');
+
 INSERT INTO attachment_table ("attachment_id", "attachment_name", "attachment_path", "attachment_bucket") VALUES
 ('1a0f3e82-3e2f-47e3-95f4-93cd0daaf38c', 'car placeholder', 'https://qdeexfjtzydxkfsdgodx.supabase.co/storage/v1/object/public/CARS/car-placeholder.png', 'CARS'),
 ('8050bda8-52ed-4e97-9e08-94fe04c1b01d', 'bpi qr code', 'https://qdeexfjtzydxkfsdgodx.supabase.co/storage/v1/object/public/PAYMENT_CHANNEL_QR/bpi.jpg', 'PAYMENT_CHANNEL_QR'),

@@ -205,3 +205,31 @@ export type OrderPaymentType = OrderPaymentTableRow & {
   order_payment_proof_attachment: AttachmentTableRow;
   order_payment_payment_channel: PaymentChannelTableRow;
 };
+
+export type AdminCatalogCar = CarTableRow & {
+  car_make: MakeTableRow;
+  car_model: ModelTableRow;
+  car_magic_collar: MagicCollarTableRow;
+  car_image_attachment: AttachmentTableRow;
+};
+export type AdminCatalogSortAccessor =
+  | "car_date_created"
+  | "magic_collar_stock_quantity"
+  | "magic_collar_price";
+export type MagicCollarSortAccessor = "magic_collar_date_created" | "magic_collar_stock_quantity";
+
+export type CarFormType = {
+  carId?: string;
+  magicCollarReferenceNumber: number | null;
+  make: string;
+  model: string;
+  modelCode: string;
+  yearStart: number | undefined;
+  yearEnd: number | null;
+  image: File | null;
+  existingAttachment: {
+    path: string;
+    name: string;
+  } | null;
+  isAvailable: boolean;
+};

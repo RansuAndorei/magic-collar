@@ -83,12 +83,13 @@ CREATE TYPE order_payment_request_status AS ENUM (
   'REJECTED'
 );
 
+CREATE SEQUENCE magic_collar_number_seq START 1000;
 CREATE SEQUENCE order_number_seq START 1000;
 CREATE SEQUENCE batch_number_seq START 1000;
 
 CREATE TABLE attachment_table(
   attachment_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY NOT NULL,
-  attachment_date_created TIMESTAMPTZ DEFAULT now() NOT NULL,
+  attachment_date_created TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   attachment_is_disabled BOOLEAN DEFAULT false NOT NULL,
 
   attachment_name TEXT NOT NULL,
@@ -132,7 +133,7 @@ CREATE TABLE email_resend_table(
 
 CREATE TABLE address_table(
   address_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY NOT NULL,
-  address_date_created TIMESTAMPTZ DEFAULT now() NOT NULL,
+  address_date_created TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   address_region TEXT NOT NULL,
   address_province TEXT NOT NULL,
   address_city TEXT NOT NULL,
@@ -190,7 +191,7 @@ CREATE TABLE barangay_table(
 
 CREATE TABLE make_table(
   make_id UUID DEFAULT uuid_generate_v4() UNIQUE PRIMARY KEY NOT NULL,
-  make_date_created TIMESTAMPTZ DEFAULT now() NOT NULL,
+  make_date_created TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   make VARCHAR(4000) NOT NULL,
   make_is_disabled BOOLEAN DEFAULT false NOT NULL,
   make_is_available BOOLEAN DEFAULT true NOT NULL
@@ -198,7 +199,7 @@ CREATE TABLE make_table(
 
 CREATE TABLE model_table(
   model_id UUID DEFAULT uuid_generate_v4() UNIQUE PRIMARY KEY NOT NULL,
-  model_date_created TIMESTAMPTZ DEFAULT now() NOT NULL,
+  model_date_created TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   model VARCHAR(4000) NOT NULL,
   model_is_disabled BOOLEAN DEFAULT false NOT NULL,
   model_is_available BOOLEAN DEFAULT true NOT NULL,
@@ -208,7 +209,9 @@ CREATE TABLE model_table(
 
 CREATE TABLE magic_collar_table(
   magic_collar_id UUID DEFAULT uuid_generate_v4() UNIQUE PRIMARY KEY NOT NULL,
-  magic_collar_date_created TIMESTAMPTZ DEFAULT now() NOT NULL,
+  magic_collar_reference_number INT DEFAULT nextval('order_number_seq') UNIQUE NOT NULL,
+  magic_collar_date_created TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  magic_collar_date_updated TIMESTAMPTZ,
   magic_collar_is_disabled BOOLEAN DEFAULT false NOT NULL,
   magic_collar_is_available BOOLEAN DEFAULT true NOT NULL,
 
@@ -219,6 +222,9 @@ CREATE TABLE magic_collar_table(
   magic_collar_rear_quantity INT,
   magic_collar_all_quantity INT,
   magic_collar_stock_quantity INT DEFAULT 0 NOT NULL,
+
+  magic_collar_created_by_admin_user_id UUID REFERENCES user_table(user_id) NOT NULL,
+  magic_collar_updated_by_admin_user_id UUID REFERENCES user_table(user_id),
   
   CONSTRAINT magic_collar_price_check CHECK (magic_collar_price >= 0),
   CONSTRAINT magic_collar_down_payment_price_check CHECK (
@@ -245,7 +251,8 @@ CREATE TABLE magic_collar_table(
 
 CREATE TABLE car_table(
   car_id UUID DEFAULT uuid_generate_v4() UNIQUE PRIMARY KEY NOT NULL,
-  car_date_created TIMESTAMPTZ DEFAULT now() NOT NULL,
+  car_date_created TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  car_date_updated TIMESTAMPTZ,
   car_is_disabled BOOLEAN DEFAULT false NOT NULL,
   car_is_available BOOLEAN DEFAULT true NOT NULL,
 
@@ -257,6 +264,9 @@ CREATE TABLE car_table(
   car_model_id UUID REFERENCES model_table(model_id) NOT NULL,
   car_magic_collar_id UUID REFERENCES magic_collar_table(magic_collar_id) NOT NULL,
   car_image_attachment_id UUID REFERENCES attachment_table(attachment_id) NOT NULL,
+
+  car_created_by_admin_user_id UUID REFERENCES user_table(user_id) NOT NULL,
+  car_updated_by_admin_user_id UUID REFERENCES user_table(user_id),
 
   CONSTRAINT car_model_year_range_check CHECK (
     car_model_year_end IS NULL OR car_model_year_end >= car_model_year_start
@@ -446,5 +456,6 @@ GRANT ALL ON ALL TABLES IN SCHEMA public TO PUBLIC;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO POSTGRES;
 GRANT ALL ON SCHEMA public TO postgres;
 GRANT ALL ON SCHEMA public TO public;
+GRANT USAGE, SELECT ON SEQUENCE magic_collar_number_seq TO public;
 GRANT USAGE, SELECT ON SEQUENCE order_number_seq TO public;
 GRANT USAGE, SELECT ON SEQUENCE batch_number_seq TO public;

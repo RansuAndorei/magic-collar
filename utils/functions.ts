@@ -200,3 +200,28 @@ export const generateAvatarColor = (userId: string | number): string => {
   const hue = Math.abs(hash) % 360;
   return `hsl(${hue}, 65%, 50%)`;
 };
+
+export const getAvailabilityProps = (isAvailable: boolean) =>
+  isAvailable
+    ? {
+        label: "Available",
+        color: "green",
+      }
+    : {
+        label: "Unavailable",
+        color: "orange",
+      };
+
+export const urlToFile = async (url: string, filename: string) => {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return new File([blob], filename, {
+    type: blob.type,
+  });
+};
+
+export const parseStatus = (value: string | null) => {
+  if (value === "true") return true;
+  if (value === "false") return false;
+  return null;
+};

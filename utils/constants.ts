@@ -233,6 +233,7 @@ export const ORDER_PAGE_SIZE = 5;
 export const MAX_QUANTITY = 1000;
 export const ORDER_INITIAL_VISIBLE = 3;
 export const MAX_FILE_SIZE = 5 * 1024 * 1024;
+export const PAGINATION_OPTIONS = [10, 20, 50];
 
 export const SHOP_PREFERENCES_STORAGE_KEY = "magic-collar-shop-preferences";
 export const ORDER_PREFERENCES_STORAGE_KEY = "magic-collar-order-preferences";
@@ -394,12 +395,24 @@ export const PAYMENT_STATUS_OPTIONS: { value: OrderPaymentStatusEnum | "ALL"; la
 export const ADMIN_NAV_GROUP = [
   {
     label: "Overview",
-    links: [{ label: "Analytics", icon: IconChartBar, meta: "Sales, demand, batch timing" }],
+    links: [
+      {
+        label: "Analytics",
+        icon: IconChartBar,
+        meta: "Sales, demand, batch timing",
+        href: "/admin",
+      },
+    ],
   },
   {
     label: "Catalog",
     links: [
-      { label: "Cars & Magic Collars", icon: IconCar, meta: "Fitment and collar records" },
+      {
+        label: "Cars & Magic Collars",
+        icon: IconCar,
+        meta: "Fitment and collar records",
+        href: "/admin/cars-magic-collars",
+      },
       { label: "Makes & Models", icon: IconTags, meta: "Reference lists" },
       { label: "Inventory", icon: IconPackage, meta: "Stock quantities" },
     ],
@@ -422,4 +435,10 @@ export const ADMIN_NAV_GROUP = [
       { label: "Messenger", icon: IconMessageCircle, meta: "Chat channels" },
     ],
   },
+];
+
+export const STATUS_OPTIONS = [
+  { value: "null", label: "All statuses" },
+  { value: "true", label: "Available" },
+  { value: "false", label: "Unavailable" },
 ];

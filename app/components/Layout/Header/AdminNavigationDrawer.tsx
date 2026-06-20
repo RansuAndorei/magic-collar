@@ -13,6 +13,8 @@ import {
 } from "@mantine/core";
 import { IconChevronRight, IconX } from "@tabler/icons-react";
 import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 type Props = {
   opened: boolean;
@@ -20,6 +22,8 @@ type Props = {
 };
 
 const AdminNavigationDrawer = ({ opened, onClose }: Props) => {
+  const pathname = usePathname();
+
   return (
     <Drawer
       opened={opened}
@@ -96,12 +100,10 @@ const AdminNavigationDrawer = ({ opened, onClose }: Props) => {
                     <Text size="xs" c="dimmed" fw={700} tt="uppercase">
                       {group.label}
                     </Text>
-                    {group.links.map(({ label, meta, icon: Icon }) => {
-                      const isActive = label === "Analytics";
-
-                      return (
+                    {group.links.map(({ label, meta, icon: Icon, href }) => {
+                      const isActive = href ? pathname === href : false;
+                      const content = (
                         <Group
-                          key={label}
                           gap="sm"
                           wrap="nowrap"
                           p="xs"
@@ -121,6 +123,19 @@ const AdminNavigationDrawer = ({ opened, onClose }: Props) => {
                           </Box>
                           <IconChevronRight size={16} color="var(--mantine-color-dimmed)" />
                         </Group>
+                      );
+
+                      return href ? (
+                        <Link
+                          key={label}
+                          href={href}
+                          onClick={onClose}
+                          style={{ color: "inherit", textDecoration: "none" }}
+                        >
+                          {content}
+                        </Link>
+                      ) : (
+                        <Box key={label}>{content}</Box>
                       );
                     })}
                   </Stack>
