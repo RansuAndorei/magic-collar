@@ -324,8 +324,8 @@ CREATE TABLE order_table(
   order_address_street TEXT NOT NULL,
   order_address_postal_code TEXT NOT NULL,
 
-  order_downpayment_amount NUMERIC(10, 2) NOT NULL,
-  order_downpayment_fee NUMERIC(10, 2) NOT NULL,
+  order_down_payment_amount NUMERIC(10, 2) NOT NULL,
+  order_down_payment_fee NUMERIC(10, 2) NOT NULL,
 
   order_user_id UUID REFERENCES user_table(user_id) NOT NULL
 );

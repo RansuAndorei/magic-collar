@@ -1,64 +1,16 @@
 import { FETCH_OPTION_LIMIT } from "@/utils/constants";
 import { Database } from "@/utils/database";
 import {
+  AdminCarCatalogSortAccessor,
   AdminCatalogCar,
-  AdminCatalogSortAccessor,
+  AdminMagicCollarCatalogSortAccessor,
   AttachmentTableInsert,
-  MagicCollarSortAccessor,
+  ConnectedCarType,
+  MagicCollarTableInsert,
+  MagicCollarTableUpdate,
   OptionType,
 } from "@/utils/types";
 import { SupabaseClient } from "@supabase/supabase-js";
-
-const CATALOG_PATH = "/admin/cars-magic-collars";
-
-export type AdminSortStatus<TAccessor extends string> = {
-  columnAccessor: TAccessor;
-  direction: "asc" | "desc";
-};
-
-export type AdminPaginationParams<TAccessor extends string> = {
-  page: number;
-  recordsPerPage: number;
-  search: string;
-  sortStatus: AdminSortStatus<TAccessor>;
-};
-
-export type AdminPaginatedResult<TRecord> = {
-  records: TRecord[];
-  totalRecords: number;
-};
-
-export type AdminCatalogFormValues = {
-  carId?: string;
-  magicCollarId?: string;
-  attachmentId?: string;
-  makeId: string;
-  modelId: string;
-  modelCode: string;
-  yearStart: number;
-  yearEnd: number | null;
-  imageName: string;
-  imageUrl: string;
-  price: number;
-  downPaymentPrice: number;
-  frontQuantity: number | null;
-  rearQuantity: number | null;
-  allQuantity: number | null;
-  stockQuantity: number;
-  isAvailable: boolean;
-};
-
-export type AdminMutationResult = {
-  success: boolean;
-  message: string;
-};
-
-const getRange = (page: number, recordsPerPage: number) => {
-  const from = (page - 1) * recordsPerPage;
-  return { from, to: from + recordsPerPage - 1 };
-};
-
-const getSearchText = (search: string) => search.trim().replace(/[%_]/g, "");
 
 export const getCarTotalCount = async (supabaseClient: SupabaseClient<Database>) => {
   const { count, error } = await supabaseClient
@@ -123,7 +75,7 @@ export const getAdminCatalogCarsPage = async (
     recordsPerPage: number;
     search: string;
     status: boolean | null;
-    sortColumnAccessor: AdminCatalogSortAccessor;
+    sortColumnAccessor: AdminCarCatalogSortAccessor;
     sortDirection: "asc" | "desc";
   },
 ) => {
@@ -139,10 +91,20 @@ export const getAdminCatalogCarsPage = async (
 
 export const getMagicCollarsPage = async (
   supabaseClient: SupabaseClient<Database>,
-  params: AdminPaginationParams<MagicCollarSortAccessor>,
+  params: {
+    page: number;
+    recordsPerPage: number;
+    search: string;
+    sortStatus: {
+      columnAccessor: AdminMagicCollarCatalogSortAccessor;
+      direction: "asc" | "desc";
+    };
+  },
 ) => {
-  const { from, to } = getRange(params.page, params.recordsPerPage);
-  const searchText = getSearchText(params.search);
+  const { page, recordsPerPage, search, sortStatus } = params;
+
+  const start = (page - 1) * recordsPerPage;
+  const searchText = search.trim().replace(/[%_]/g, "");
 
   let query = supabaseClient.from("magic_collar_table").select("*", { count: "exact" });
 
@@ -150,11 +112,11 @@ export const getMagicCollarsPage = async (
     query = query.eq("magic_collar_reference_number", Number(searchText));
   }
 
-  query = query.order(params.sortStatus.columnAccessor, {
-    ascending: params.sortStatus.direction === "asc",
+  query = query.order(sortStatus.columnAccessor, {
+    ascending: sortStatus.direction === "asc",
   });
 
-  const { data, error, count } = await query.range(from, to);
+  const { data, error, count } = await query.range(start, start + recordsPerPage - 1);
   if (error) throw error;
 
   return {
@@ -167,22 +129,15 @@ export const setCatalogCarAvailability = async (
   supabaseClient: SupabaseClient<Database>,
   params: {
     carId: string;
-    magicCollarId: string;
     isAvailable: boolean;
   },
 ) => {
-  const { carId, magicCollarId, isAvailable } = params;
-
-  const [carResult, collarResult] = await Promise.all([
-    supabaseClient.from("car_table").update({ car_is_available: isAvailable }).eq("car_id", carId),
-    supabaseClient
-      .from("magic_collar_table")
-      .update({ magic_collar_is_available: isAvailable })
-      .eq("magic_collar_id", magicCollarId),
-  ]);
-
-  if (carResult.error) return { success: false, message: carResult.error.message };
-  if (collarResult.error) return { success: false, message: collarResult.error.message };
+  const { carId, isAvailable } = params;
+  const { error } = await supabaseClient
+    .from("car_table")
+    .update({ car_is_available: isAvailable })
+    .eq("car_id", carId);
+  if (error) throw error;
 };
 
 export const deleteCatalogCar = async (
@@ -246,8 +201,172 @@ export const updateCar = async (
     magicCollarId: string;
     isAvailable: boolean;
     attachmentData?: AttachmentTableInsert;
+    userId: string;
   },
 ) => {
   const { error } = await supabaseClient.rpc("update_car", { input_data: params });
   if (error) throw error;
+};
+
+export const getAdminCatalogMagicCollarPage = async (
+  supabaseClient: SupabaseClient<Database>,
+  params: {
+    page: number;
+    recordsPerPage: number;
+    search: string;
+    status: boolean | null;
+    sortColumnAccessor: AdminMagicCollarCatalogSortAccessor;
+    sortDirection: "asc" | "desc";
+  },
+) => {
+  const { page, recordsPerPage, search, status, sortColumnAccessor, sortDirection } = params;
+
+  const start = (page - 1) * recordsPerPage;
+
+  let query = supabaseClient
+    .from("magic_collar_table")
+    .select("*", { count: "exact" })
+    .eq("magic_collar_is_disabled", false)
+    .order(sortColumnAccessor, {
+      ascending: sortDirection === "asc",
+    })
+    .order("magic_collar_reference_number", {
+      ascending: true,
+    })
+    .range(start, start + recordsPerPage - 1);
+
+  if (search) {
+    let trimmedSearch = search.trim().toUpperCase();
+    if (trimmedSearch.startsWith("MC-")) {
+      trimmedSearch = trimmedSearch.slice(3);
+    }
+    const refNumber = Number(trimmedSearch);
+    if (!Number.isNaN(refNumber)) {
+      query = query.eq("magic_collar_reference_number", refNumber);
+    }
+  }
+  if (status !== null) {
+    query = query.eq("magic_collar_is_available", status);
+  }
+
+  const { data, count, error } = await query;
+  if (error) throw error;
+  return {
+    records: data,
+    totalRecords: count ?? 0,
+  };
+};
+
+export const setCatalogMagicCollarAvailability = async (
+  supabaseClient: SupabaseClient<Database>,
+  params: {
+    magicCollarId: string;
+    isAvailable: boolean;
+  },
+) => {
+  const { magicCollarId, isAvailable } = params;
+  const { error } = await supabaseClient
+    .from("magic_collar_table")
+    .update({ magic_collar_is_available: isAvailable })
+    .eq("magic_collar_id", magicCollarId);
+  if (error) throw error;
+};
+
+export const deleteCatalogMagicCollar = async (
+  supabaseClient: SupabaseClient<Database>,
+  params: {
+    magicCollarId: string;
+  },
+) => {
+  const { magicCollarId } = params;
+  const { error } = await supabaseClient
+    .from("magic_collar_table")
+    .update({ magic_collar_is_disabled: true })
+    .eq("magic_collar_id", magicCollarId);
+  if (error) throw error;
+};
+
+export const checkConnectedCarToMagicCollar = async (
+  supabaseClient: SupabaseClient<Database>,
+  params: {
+    magicCollarId: string;
+  },
+) => {
+  const { magicCollarId } = params;
+  const { count, error } = await supabaseClient
+    .from("car_table")
+    .select("*", { count: "exact", head: true })
+    .eq("car_magic_collar_id", magicCollarId)
+    .eq("car_is_disabled", false);
+  if (error) throw error;
+  return Boolean(count);
+};
+
+export const createMagicCollar = async (
+  supabaseClient: SupabaseClient<Database>,
+  params: {
+    magicCollarInsert: MagicCollarTableInsert;
+  },
+) => {
+  const { magicCollarInsert } = params;
+  const { error } = await supabaseClient.from("magic_collar_table").insert(magicCollarInsert);
+  if (error) throw error;
+};
+
+export const updateMagicCollar = async (
+  supabaseClient: SupabaseClient<Database>,
+  params: {
+    magicCollarUpdate: MagicCollarTableUpdate;
+    magicCollarId: string;
+  },
+) => {
+  const { magicCollarUpdate, magicCollarId } = params;
+  const { error } = await supabaseClient
+    .from("magic_collar_table")
+    .update(magicCollarUpdate)
+    .eq("magic_collar_id", magicCollarId);
+  if (error) throw error;
+};
+
+export const getVisiblePageStock = async (supabaseClient: SupabaseClient<Database>) => {
+  const stockList: { magic_collar_stock_quantity: number }[] = [];
+  let offset = 0;
+  while (true) {
+    const { data, error } = await supabaseClient
+      .from("magic_collar_table")
+      .select("magic_collar_stock_quantity")
+      .order("magic_collar_id", { ascending: true })
+      .eq("magic_collar_is_disabled", false)
+      .gt("magic_collar_stock_quantity", 0)
+      .range(offset, offset + FETCH_OPTION_LIMIT - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    stockList.push(...data);
+    if (data.length < FETCH_OPTION_LIMIT) break;
+    offset += FETCH_OPTION_LIMIT;
+  }
+  return stockList.reduce((total, item) => total + item.magic_collar_stock_quantity, 0);
+};
+
+export const getConnectedCarsCount = async (
+  supabaseClient: SupabaseClient<Database>,
+  params: { magicCollarId: string },
+) => {
+  const { magicCollarId } = params;
+  const { count, error } = await supabaseClient
+    .from("car_table")
+    .select("*", { count: "exact", head: true })
+    .eq("car_is_disabled", false)
+    .eq("car_magic_collar_id", magicCollarId);
+  if (error) throw error;
+  return count ?? 0;
+};
+
+export const getConnectedCars = async (
+  supabaseClient: SupabaseClient<Database>,
+  params: { magicCollarId: string },
+) => {
+  const { data, error } = await supabaseClient.rpc("get_connected_cars", { input_data: params });
+  if (error) throw error;
+  return data as ConnectedCarType[];
 };

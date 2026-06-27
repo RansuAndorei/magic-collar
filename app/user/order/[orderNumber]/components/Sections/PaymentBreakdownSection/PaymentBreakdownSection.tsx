@@ -39,8 +39,8 @@ const PaymentBreakdownSection = ({
   const [historyOpen, { toggle: toggleHistory }] = useDisclosure(false);
 
   const orderTotal = useMemo(() => getOrderTotal(order.order_item), [order]);
-  const downpaymentPaid = order.order_downpayment_amount - order.order_downpayment_fee;
-  const paidTotal = Math.min(orderTotal, downpaymentPaid + approvedPaymentTotal);
+  const downPaymentPaid = order.order_down_payment_amount - order.order_down_payment_fee;
+  const paidTotal = Math.min(orderTotal, downPaymentPaid + approvedPaymentTotal);
   const balance = Math.max(orderTotal - paidTotal, 0);
   const progressValue = orderTotal > 0 ? (paidTotal / orderTotal) * 100 : 0;
 
@@ -141,10 +141,10 @@ const PaymentBreakdownSection = ({
           </Card>
           <Card withBorder p="md">
             <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
-              Downpayment Paid
+              Down Payment Paid
             </Text>
             <Text fw={800} c="green">
-              {formatCurrency(downpaymentPaid, { minimumFractionDigits: 0 })}
+              {formatCurrency(downPaymentPaid, { minimumFractionDigits: 0 })}
             </Text>
           </Card>
           <Card withBorder p="md">

@@ -74,7 +74,7 @@ const CheckoutSuccessPage = () => {
               </Title>
 
               <Text c="dimmed">
-                Your downpayment has been received successfully. Your order is now being processed
+                Your down payment has been received successfully. Your order is now being processed
                 for fulfillment. You can track updates anytime in your Order List.
               </Text>
             </Stack>
@@ -118,7 +118,7 @@ const CheckoutSuccessPage = () => {
 
                   <Group justify="space-between">
                     <Text c="dimmed" size="sm">
-                      Downpayment paid
+                      Down Payment Paid
                     </Text>
                     <Text fw={700}>
                       {formatCurrency(summary.downPayment, {

@@ -6,11 +6,17 @@ import {
   formatDate,
   getAvailabilityProps,
   getSetContents,
+  getYearRange,
   isAppError,
   parseStatus,
 } from "@/utils/functions";
 import { supabaseClient } from "@/utils/supabase/client";
-import { AdminCatalogCar, AdminCatalogSortAccessor, CarFormType } from "@/utils/types";
+import {
+  AdminCarCatalogSortAccessor,
+  AdminCatalogCar,
+  AdminSortStatus,
+  CarFormType,
+} from "@/utils/types";
 import { Badge, Box, Button, Group, Select, Text, TextInput, Title, Tooltip } from "@mantine/core";
 import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
@@ -27,7 +33,6 @@ import { DataTableColumn } from "mantine-datatable";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  AdminSortStatus,
   deleteCatalogCar,
   getAdminCatalogCarsPage,
   setCatalogCarAvailability,
@@ -67,7 +72,7 @@ const CarList = ({ makeList, modelList }: Props) => {
   const [carPage, setCarPage] = useState(1);
   const [carRecordsPerPage, setCarRecordsPerPage] = useState(PAGINATION_OPTIONS[0]);
   const [isFetchingCars, setIsFetchingCars] = useState(false);
-  const [carSortStatus, setCarSortStatus] = useState<AdminSortStatus<AdminCatalogSortAccessor>>({
+  const [carSortStatus, setCarSortStatus] = useState<AdminSortStatus<AdminCarCatalogSortAccessor>>({
     columnAccessor: "car_date_created",
     direction: "desc",
   });
@@ -124,7 +129,6 @@ const CarList = ({ makeList, modelList }: Props) => {
       try {
         await setCatalogCarAvailability(supabaseClient, {
           carId: car.car_id,
-          magicCollarId: car.car_magic_collar.magic_collar_id,
           isAvailable: !car.car_is_available,
         });
         notifications.show({
@@ -291,7 +295,7 @@ const CarList = ({ makeList, modelList }: Props) => {
         sortStatus.columnAccessor === "magic_collar_stock_quantity" ||
         sortStatus.columnAccessor === "magic_collar_price"
       ) {
-        const columnAccessor = sortStatus.columnAccessor as AdminCatalogSortAccessor;
+        const columnAccessor = sortStatus.columnAccessor as AdminCarCatalogSortAccessor;
         setCarSortStatus({
           columnAccessor,
           direction: sortStatus.direction,
@@ -302,7 +306,6 @@ const CarList = ({ makeList, modelList }: Props) => {
     [],
   );
 
-  // (now-stable) callbacks change — not on every keystroke/render.
   const columns = useMemo<DataTableColumn<AdminCatalogCar>[]>(
     () => [
       {
@@ -316,24 +319,21 @@ const CarList = ({ makeList, modelList }: Props) => {
             <Text size="xs" c="dimmed">
               {car.car_model_code}
             </Text>
-            {isMobile ? (
-              <Text size="xs" c="dimmed">
-                Created {formatDate(new Date(car.car_date_created))}
-              </Text>
-            ) : null}
           </Box>
         ),
       },
-      ...(isMobile
-        ? []
-        : [
-            {
-              accessor: "car_date_created",
-              title: "Date Created",
-              sortable: true,
-              render: (car: AdminCatalogCar) => formatDate(new Date(car.car_date_created)),
-            },
-          ]),
+      {
+        accessor: "car_year",
+        title: "Year",
+        sortable: true,
+        render: (car) => getYearRange(car.car_model_year_start, car.car_model_year_end),
+      },
+      {
+        accessor: "car_date_created",
+        title: "Date Created",
+        sortable: true,
+        render: (car) => formatDate(new Date(car.car_date_created)),
+      },
       {
         accessor: "collar",
         title: "Magic Collar",
@@ -388,7 +388,6 @@ const CarList = ({ makeList, modelList }: Props) => {
         textAlign: "center",
         render: (car) => {
           const { label, color } = getAvailabilityProps(car.car_is_available);
-
           return (
             <Badge color={color} variant="light">
               {label}
@@ -414,7 +413,7 @@ const CarList = ({ makeList, modelList }: Props) => {
                   <IconPencil size={16} />
                 </Button>
               </Tooltip>
-              <Tooltip label={car.car_is_available ? "Temporarily disable" : "Enable"}>
+              <Tooltip label={car.car_is_available ? "Temporarily Disable" : "Enable"}>
                 <Button
                   variant="subtle"
                   color={car.car_is_available ? "yellow" : "green"}
@@ -428,7 +427,7 @@ const CarList = ({ makeList, modelList }: Props) => {
                   }
                   aria-label={
                     car.car_is_available
-                      ? `Temporarily disable ${car.car_make.make} ${car.car_model.model}`
+                      ? `Temporarily Disable ${car.car_make.make} ${car.car_model.model}`
                       : `Enable ${car.car_make.make} ${car.car_model.model}`
                   }
                   onClick={() => confirmAvailabilityChange(car)}

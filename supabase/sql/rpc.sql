@@ -302,9 +302,9 @@ DECLARE
   input_payment_fee_percentage NUMERIC := (input_data->>'paymentFeePercentage')::NUMERIC;
   input_payment_data JSONB := (input_data->'paymentData');
 
-  var_total_downpayment NUMERIC := 0;
-  var_downpayment_fee NUMERIC;
-  var_downpayment_amount NUMERIC;
+  var_total_down_payment NUMERIC := 0;
+  var_down_payment_fee NUMERIC;
+  var_down_payment_amount NUMERIC;
   var_batch_limit INT := 0;
   var_current_batch_limit INT := 0;
   var_current_batch_id UUID;
@@ -378,15 +378,15 @@ BEGIN
     INNER JOIN attachment_table ON attachment_id = car_image_attachment_id
   ) item_details;
 
-  -- compute total downpayment from the fetched items
+  -- compute total down_payment from the fetched items
   SELECT SUM((item->>'magic_collar_down_payment_price')::NUMERIC * (item->>'quantity')::INT)
-  INTO var_total_downpayment
+  INTO var_total_down_payment
   FROM JSONB_ARRAY_ELEMENTS(var_order_items) AS item;
 
   -- compute fee
   SELECT transfer_fee, total_amount
-  INTO var_downpayment_fee, var_downpayment_amount
-  FROM calculate_fee(var_total_downpayment, input_payment_fee_percentage);
+  INTO var_down_payment_fee, var_down_payment_amount
+  FROM calculate_fee(var_total_down_payment, input_payment_fee_percentage);
 
   -- fetch delivery details
   SELECT JSONB_BUILD_OBJECT(
@@ -415,8 +415,8 @@ BEGIN
     order_address_barangay,
     order_address_street,
     order_address_postal_code,
-    order_downpayment_amount,
-    order_downpayment_fee,
+    order_down_payment_amount,
+    order_down_payment_fee,
     order_user_id
   ) VALUES (
     (input_order_data->>'fulfillmentType')::order_fulfillment,
@@ -428,8 +428,8 @@ BEGIN
     var_current_batch_delivery_details->>'address_barangay',
     var_current_batch_delivery_details->>'address_street',
     var_current_batch_delivery_details->>'address_postal_code',
-    var_downpayment_amount,
-    var_downpayment_fee,
+    var_down_payment_amount,
+    var_down_payment_fee,
     input_user_id
   )
   RETURNING order_id INTO var_order_id;
@@ -795,12 +795,25 @@ DECLARE
   var_offset INTEGER := (input_page - 1) * input_records_per_page;
   var_ascending BOOLEAN := (input_sort_direction = 'asc');
   var_search_pattern TEXT;
+  var_is_mc_ref_search BOOLEAN := false;
+  var_mc_ref_number INTEGER;
 
   var_total_records INTEGER;
   var_records JSONB;
 BEGIN
   IF input_search <> '' THEN
     var_search_pattern := '%' || input_search || '%';
+
+    -- Detect "4 digit number" or "MC-" + 4 digit number format
+    var_is_mc_ref_search := (
+      input_search ~ '^[0-9]{4}$'
+      OR input_search ~* '^MC-[0-9]{4}$'
+    );
+
+    IF var_is_mc_ref_search THEN
+      -- Strip the "MC-" prefix (if present) and cast remaining digits to int
+      var_mc_ref_number := REGEXP_REPLACE(input_search, '^MC-', '', 'i')::INTEGER;
+    END IF;
   END IF;
 
   SELECT COUNT(*)
@@ -808,11 +821,13 @@ BEGIN
   FROM car_table
   INNER JOIN make_table ON make_id = car_make_id
   INNER JOIN model_table ON model_id = car_model_id
+  INNER JOIN magic_collar_table ON magic_collar_id = car_magic_collar_id
   WHERE (
     input_search = ''
     OR car_model_code ILIKE var_search_pattern
     OR make ILIKE var_search_pattern
     OR model ILIKE var_search_pattern
+    OR (var_is_mc_ref_search AND magic_collar_reference_number = var_mc_ref_number)
   )
   AND (
     input_status IS NULL
@@ -835,6 +850,7 @@ BEGIN
       OR car_model_code ILIKE var_search_pattern
       OR make ILIKE var_search_pattern
       OR model ILIKE var_search_pattern
+      OR (var_is_mc_ref_search AND magic_collar_reference_number = var_mc_ref_number)
     )
     AND (
       input_status IS NULL
@@ -853,7 +869,8 @@ BEGIN
       CASE WHEN input_sort_column NOT IN ('magic_collar_stock_quantity', 'magic_collar_price') AND var_ascending
         THEN car_date_created END ASC,
       CASE WHEN input_sort_column NOT IN ('magic_collar_stock_quantity', 'magic_collar_price') AND NOT var_ascending
-        THEN car_date_created END DESC
+        THEN car_date_created END DESC,
+      magic_collar_reference_number ASC
     LIMIT var_limit OFFSET var_offset
   )
   SELECT COALESCE(
@@ -981,6 +998,7 @@ DECLARE
   input_year_end INT := NULLIF(input_data->>'yearEnd', '')::INT;
   input_magic_collar_id UUID := (input_data->>'magicCollarId')::UUID;
   input_is_available BOOLEAN := (input_data->>'isAvailable')::BOOLEAN;
+  input_user_id UUID := (input_data->>'userId')::UUID;
 
   input_attachment_data JSONB := (input_data->>'attachmentData')::JSONB;
 
@@ -1047,7 +1065,43 @@ BEGIN
     car_model_id = var_model_id,
     car_magic_collar_id = input_magic_collar_id,
     car_image_attachment_id = COALESCE(var_attachment_id, car_image_attachment_id),
-    car_is_available = input_is_available
+    car_is_available = input_is_available,
+    car_updated_by_admin_user_id = input_user_id
   WHERE car_id = input_car_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_connected_cars(input_data JSONB)
+RETURNS JSONB
+AS $$
+DECLARE
+  input_magic_collar_id UUID := (input_data->>'magicCollarId')::UUID;
+
+  return_data JSONB;
+BEGIN
+  WITH car_data AS (
+    SELECT
+      car_table.*,
+      make_table.make,
+      model_table.model
+    FROM car_table
+    INNER JOIN make_table
+      ON make_id = car_make_id
+    INNER JOIN model_table
+      ON model_id = car_model_id
+    WHERE car_magic_collar_id = input_magic_collar_id
+      AND car_is_disabled = false
+    ORDER BY make, model, car_date_created
+  )
+  SELECT JSONB_AGG(
+    TO_JSONB(car_data) - 'make' - 'model' ||JSONB_BUILD_OBJECT(
+      'car_make', make,
+      'car_model', model
+    )
+  )
+  FROM car_data
+  INTO return_data;
+
+  RETURN COALESCE(return_data, '[]'::JSONB);
 END;
 $$ LANGUAGE plpgsql;

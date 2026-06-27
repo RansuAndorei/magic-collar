@@ -19,7 +19,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   "empty-cart": "Your cart is empty. Add at least one Magic Collar before checking out.",
   "missing-address": "Please choose a delivery address or switch to pickup.",
   "missing-courier": "Please choose LBC or Lalamove for delivery.",
-  "missing-payment": "Please provide your downpayment payment method and reference number.",
+  "missing-payment": "Please provide your down payment payment method and reference number.",
   "load-failed": "We could not load the checkout data. Please try again.",
   "submission-failed": "We could not submit your checkout details. Please try again.",
 };

@@ -212,11 +212,14 @@ export type AdminCatalogCar = CarTableRow & {
   car_magic_collar: MagicCollarTableRow;
   car_image_attachment: AttachmentTableRow;
 };
-export type AdminCatalogSortAccessor =
+export type AdminCarCatalogSortAccessor =
   | "car_date_created"
   | "magic_collar_stock_quantity"
   | "magic_collar_price";
-export type MagicCollarSortAccessor = "magic_collar_date_created" | "magic_collar_stock_quantity";
+export type AdminMagicCollarCatalogSortAccessor =
+  | "magic_collar_date_created"
+  | "magic_collar_stock_quantity"
+  | "magic_collar_price";
 
 export type CarFormType = {
   carId?: string;
@@ -232,4 +235,27 @@ export type CarFormType = {
     name: string;
   } | null;
   isAvailable: boolean;
+};
+
+export type MagicCollarFormType = {
+  magicCollarId?: string;
+  price: number;
+  currency: string;
+  isAvailable: boolean;
+  downPaymentPrice: number;
+  frontQuantity: null | number;
+  rearQuantity: null | number;
+  allQuantity: null | number;
+  stockQuantity: number;
+  referenceNumber?: number;
+};
+
+export type AdminSortStatus<TAccessor extends string> = {
+  columnAccessor: TAccessor;
+  direction: "asc" | "desc";
+};
+
+export type ConnectedCarType = CarTableRow & {
+  car_make: string;
+  car_model: string;
 };

@@ -240,7 +240,7 @@ const CartDrawer = ({
           >
             <Stack gap="xs">
               <Group justify="space-between">
-                <Text c="dimmed">Down payment total</Text>
+                <Text c="dimmed">Down Payment Total</Text>
                 <Text fw={700}>
                   {formatCurrency(totalDownPayment, {
                     currency: items[0].product.car_magic_collar.magic_collar_price_currency,

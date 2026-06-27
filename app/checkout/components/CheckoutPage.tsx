@@ -232,7 +232,7 @@ const CheckoutPage = ({ carList, addressList }: Props) => {
                 Review and place order
               </Title>
               <Text c="dimmed">
-                Confirm your cart, fulfillment option, and downpayment details.
+                Confirm your cart, fulfillment option, and down payment details.
               </Text>
             </Stack>
             <Button
@@ -334,7 +334,7 @@ const CheckoutPage = ({ carList, addressList }: Props) => {
                                 x {quantity}
                               </Text>
                               <Text size="xs" c="dimmed">
-                                Downpayment:{" "}
+                                Down Payment:{" "}
                                 {formatCurrency(
                                   car_magic_collar.magic_collar_down_payment_price * quantity,
                                   {
@@ -356,7 +356,7 @@ const CheckoutPage = ({ carList, addressList }: Props) => {
                     </Stack>
                     <Divider />
                     <Group justify="space-between">
-                      <Text c="dimmed">Total price</Text>
+                      <Text c="dimmed">Total Price</Text>
                       <Text fw={700}>
                         {formatCurrency(totals.price, {
                           currency: totals.currency,
@@ -365,7 +365,7 @@ const CheckoutPage = ({ carList, addressList }: Props) => {
                       </Text>
                     </Group>
                     <Group justify="space-between">
-                      <Text fw={700}>Downpayment due</Text>
+                      <Text fw={700}>Down Payment Due</Text>
                       <Text fw={800} size="lg" c="red.5">
                         {formatCurrency(totals.downPayment, {
                           currency: totals.currency,
@@ -484,7 +484,7 @@ const CheckoutPage = ({ carList, addressList }: Props) => {
                     ) : (
                       <Alert color="red" variant="light" icon={<IconBuildingStore size={16} />}>
                         Pick up your order at the Magic Collar store. We will confirm pickup details
-                        after downpayment verification.
+                        after down payment verification.
                       </Alert>
                     )}
                   </Stack>

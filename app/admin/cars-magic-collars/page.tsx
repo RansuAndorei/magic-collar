@@ -7,6 +7,7 @@ import {
   getAdminModelOptions,
   getCarTotalCount,
   getMagicCollarTotalCount,
+  getVisiblePageStock,
 } from "./actions";
 import CarsMagicCollarsPage from "./components/CarsMagicCollarsPage";
 
@@ -22,15 +23,19 @@ const Page = async () => {
   const modelList: Record<string, string[]> = {};
   let carTotal = 0;
   let magicCollarTotal = 0;
+  let visibleStackCount = 0;
   try {
-    const [fetchedCarTotal, fetchedMagicCollarTotal, makeData, modelData] = await Promise.all([
-      getCarTotalCount(supabaseClient),
-      getMagicCollarTotalCount(supabaseClient),
-      getAdminMakeOptions(supabaseClient),
-      getAdminModelOptions(supabaseClient),
-    ]);
+    const [fetchedCarTotal, fetchedMagicCollarTotal, makeData, modelData, visibleStockData] =
+      await Promise.all([
+        getCarTotalCount(supabaseClient),
+        getMagicCollarTotalCount(supabaseClient),
+        getAdminMakeOptions(supabaseClient),
+        getAdminModelOptions(supabaseClient),
+        getVisiblePageStock(supabaseClient),
+      ]);
     carTotal = fetchedCarTotal;
     magicCollarTotal = fetchedMagicCollarTotal;
+    visibleStackCount = visibleStockData;
     makeList.push(...makeData.map(({ label }) => label));
     const makeMap = new Map(makeData.map((make) => [make.value, make.label]));
     for (const model of modelData) {
@@ -58,6 +63,7 @@ const Page = async () => {
     <CarsMagicCollarsPage
       carTotal={carTotal}
       magicCollarTotal={magicCollarTotal}
+      visibleStackCount={visibleStackCount}
       makeList={makeList}
       modelList={modelList}
     />

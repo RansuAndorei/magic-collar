@@ -102,7 +102,7 @@ const ProductDetailModal = ({ product, opened, onClose, onAddToCart }: Props) =>
 
           <Group gap="xs">
             <Badge color="red" variant="light">
-              Set contents
+              Set Contents
             </Badge>
             <Text size="sm">
               {getSetContents(
@@ -128,7 +128,7 @@ const ProductDetailModal = ({ product, opened, onClose, onAddToCart }: Props) =>
             </Stack>
             <Stack gap={2}>
               <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
-                Down payment
+                Down Payment
               </Text>
               <Text fw={700} size="lg">
                 {formatCurrency(car_magic_collar.magic_collar_down_payment_price, {
@@ -141,7 +141,7 @@ const ProductDetailModal = ({ product, opened, onClose, onAddToCart }: Props) =>
 
           <Stack gap={6}>
             <Text size="sm" fw={700}>
-              Car details
+              Car Details
             </Text>
             <Text size="sm" c="dimmed">
               Make: {car_make}
@@ -150,10 +150,10 @@ const ProductDetailModal = ({ product, opened, onClose, onAddToCart }: Props) =>
               Model: {car_model}
             </Text>
             <Text size="sm" c="dimmed">
-              Model code: {car_model_code || "Any"}
+              Model Code: {car_model_code || "Any"}
             </Text>
             <Text size="sm" c="dimmed">
-              Model year: {getYearRange(car_model_year_start, car_model_year_end)}
+              Model Year: {getYearRange(car_model_year_start, car_model_year_end)}
             </Text>
           </Stack>
 

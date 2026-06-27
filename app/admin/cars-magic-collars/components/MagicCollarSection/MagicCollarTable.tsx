@@ -1,22 +1,26 @@
-import { AdminCarCatalogSortAccessor, AdminCatalogCar, AdminSortStatus } from "@/utils/types";
+import {
+  AdminMagicCollarCatalogSortAccessor,
+  AdminSortStatus,
+  MagicCollarTableRow,
+} from "@/utils/types";
 import { DataTable, DataTableColumn } from "mantine-datatable";
 import { memo } from "react";
 
 type Props = {
-  records: AdminCatalogCar[];
+  records: MagicCollarTableRow[];
   totalRecords: number;
   recordsPerPage: number;
   recordsPerPageOptions: number[];
   page: number;
   fetching: boolean;
-  sortStatus: AdminSortStatus<AdminCarCatalogSortAccessor>;
-  columns: DataTableColumn<AdminCatalogCar>[];
+  sortStatus: AdminSortStatus<AdminMagicCollarCatalogSortAccessor>;
+  columns: DataTableColumn<MagicCollarTableRow>[];
   onPageChange: (page: number) => void;
   onRecordsPerPageChange: (value: number) => void;
   onSortStatusChange: (sortStatus: { columnAccessor: string; direction: "asc" | "desc" }) => void;
 };
 
-const CarTable = ({
+const MagicCollarTable = ({
   records,
   totalRecords,
   recordsPerPage,
@@ -31,7 +35,7 @@ const CarTable = ({
 }: Props) => {
   return (
     <DataTable
-      idAccessor="car_id"
+      idAccessor="magic_collar_id"
       withTableBorder
       borderRadius="md"
       minHeight={360}
@@ -46,11 +50,11 @@ const CarTable = ({
       onRecordsPerPageChange={onRecordsPerPageChange}
       sortStatus={sortStatus}
       onSortStatusChange={onSortStatusChange}
-      noRecordsText="No car records found"
+      noRecordsText="No magic collar records found"
       scrollAreaProps={{ type: "auto" }}
       columns={columns}
     />
   );
 };
 
-export default memo(CarTable);
+export default memo(MagicCollarTable);

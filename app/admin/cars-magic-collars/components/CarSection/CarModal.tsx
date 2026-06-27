@@ -221,8 +221,9 @@ const CarModal = ({
         });
       } else {
         await updateCar(supabaseClient, {
-          carId: defaultValues.carId,
           ...sharedFields,
+          userId: userData.id,
+          carId: defaultValues.carId,
           attachmentData,
         });
       }
@@ -234,7 +235,6 @@ const CarModal = ({
       });
       setOpened(false);
     } catch (e) {
-      console.log(e);
       notifications.show({
         message: "Something went wrong. Please try again later.",
         color: "red",
@@ -438,7 +438,6 @@ const CarModal = ({
                     hideControls
                     value={field.value ?? undefined}
                     onChange={(value) => {
-                      console.log(value);
                       field.onChange(value || null);
                     }}
                   />
@@ -515,7 +514,7 @@ const CarModal = ({
                     </Text>
                   </Text>
                   <Text size="sm" c="dimmed">
-                    Down payment:{" "}
+                    Down Payment:{" "}
                     <Text span fw={600}>
                       {formatCurrency(magicCollar.magic_collar_down_payment_price, {
                         currency: magicCollar.magic_collar_price_currency,

@@ -225,3 +225,5 @@ export const parseStatus = (value: string | null) => {
   if (value === "false") return false;
   return null;
 };
+
+export type LoadingRowType = { id: string; action: "edit" | "disable" | "delete" } | null;
