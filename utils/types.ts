@@ -1,3 +1,4 @@
+import { Icon } from "@tabler/icons-react";
 import { Database } from "./database";
 
 export type ErrorTableRow = Database["public"]["Tables"]["error_table"]["Row"];
@@ -187,6 +188,7 @@ export type StatusMetadata<TStatus extends string> = Record<
   {
     color: string;
     description: string;
+    icon:Icon
   }
 >;
 
@@ -220,6 +222,34 @@ export type AdminMagicCollarCatalogSortAccessor =
   | "magic_collar_date_created"
   | "magic_collar_stock_quantity"
   | "magic_collar_price";
+export type AdminOrderSortAccessor =
+  | "order_date_created"
+  | "order_number"
+  | "order_status"
+  | "order_payment_status";
+
+export type AdminOrder = OrderTableRow & {
+  order_user: UserTableRow;
+  order_item_count: number;
+  order_total: number;
+};
+
+export type AdminBatchSortAccessor = "batch_date_created" | "batch_number" | "batch_status";
+
+export type AdminBatch = BatchTableRow & {
+  batch_order_quantity: number;
+  batch_order_total: number;
+};
+
+export type AdminBatchOrderItem = OrderItemTableRow & {
+  order_item_order: OrderTableRow & {
+    order_user: UserTableRow;
+  };
+};
+
+export type AdminBatchDetail = AdminBatch & {
+  batch_order_item: AdminBatchOrderItem[];
+};
 
 export type CarFormType = {
   carId?: string;

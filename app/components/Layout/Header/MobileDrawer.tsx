@@ -180,7 +180,7 @@ const MobileDrawer = ({ opened, onClose, isOnboarding, isAdmin, handleLogout }: 
                         <Button
                           leftSection={<IconReceipt size={14} />}
                           component={Link}
-                          href="/user/order"
+                          href="/user/orders"
                           variant="light"
                           color="gray"
                         >

@@ -130,7 +130,7 @@ BEGIN
     VALUES (
       (var_address_item->>'fullName')::TEXT,
       (var_address_item->>'phone')::TEXT,
-      COALESCE((var_address_item->>'isDefault')::BOOLEAN, FALSE),
+      COALESCE((var_address_item->>'isDefault')::BOOLEAN, false),
       var_address_id,
       var_user_id
     );
@@ -915,10 +915,9 @@ DECLARE
   var_attachment_id UUID;
 BEGIN
   SELECT make_id
-    INTO var_make_id
-    FROM make_table
-    WHERE make = input_make
-      AND make_is_disabled = false;
+  INTO var_make_id
+  FROM make_table
+  WHERE make = input_make;
 
   IF var_make_id IS NULL THEN
     INSERT INTO make_table (make)
@@ -931,18 +930,25 @@ BEGIN
     RETURNING model_id
     INTO var_model_id;
   ELSE
+    UPDATE make_table
+    SET make_is_disabled = false
+    WHERE make_id = var_make_id;
+
     SELECT model_id
-      INTO var_model_id
-      FROM model_table
-      WHERE model = input_model
-        AND model_make_id = var_make_id
-        AND model_is_disabled = false;
+    INTO var_model_id
+    FROM model_table
+    WHERE model = input_model
+      AND model_make_id = var_make_id;
 
     IF var_model_id IS NULL THEN
       INSERT INTO model_table (model, model_make_id)
       VALUES (input_model, var_make_id)
       RETURNING model_id
       INTO var_model_id;
+    ELSE
+      UPDATE model_table
+      SET model_is_disabled = false
+      WHERE model_id = var_model_id;
     END IF;
   END IF;
 
@@ -1005,12 +1011,13 @@ DECLARE
   var_make_id UUID;
   var_model_id UUID;
   var_attachment_id UUID;
+  var_old_make_id UUID;
+  var_old_model_id UUID;
 BEGIN
   SELECT make_id
-    INTO var_make_id
-    FROM make_table
-    WHERE make = input_make
-      AND make_is_disabled = false;
+  INTO var_make_id
+  FROM make_table
+  WHERE make = input_make;
 
   IF var_make_id IS NULL THEN
     INSERT INTO make_table (make)
@@ -1023,18 +1030,25 @@ BEGIN
     RETURNING model_id
     INTO var_model_id;
   ELSE
+    UPDATE make_table
+    SET make_is_disabled = false
+    WHERE make_id = var_make_id;
+
     SELECT model_id
-      INTO var_model_id
-      FROM model_table
-      WHERE model = input_model
-        AND model_make_id = var_make_id
-        AND model_is_disabled = false;
+    INTO var_model_id
+    FROM model_table
+    WHERE model = input_model
+      AND model_make_id = var_make_id;
 
     IF var_model_id IS NULL THEN
       INSERT INTO model_table (model, model_make_id)
       VALUES (input_model, var_make_id)
       RETURNING model_id
       INTO var_model_id;
+    ELSE
+      UPDATE model_table
+      SET model_is_disabled = false
+      WHERE model_id = var_model_id;
     END IF;
   END IF;
 
@@ -1056,6 +1070,15 @@ BEGIN
     INTO var_attachment_id;
   END IF;
 
+  SELECT
+    car_make_id,
+    car_model_id
+  INTO
+    var_old_make_id,
+    var_old_model_id
+  FROM car_table
+  WHERE car_id = input_car_id;
+
   UPDATE car_table
   SET
     car_model_code = input_model_code,
@@ -1066,8 +1089,38 @@ BEGIN
     car_magic_collar_id = input_magic_collar_id,
     car_image_attachment_id = COALESCE(var_attachment_id, car_image_attachment_id),
     car_is_available = input_is_available,
-    car_updated_by_admin_user_id = input_user_id
+    car_updated_by_admin_user_id = input_user_id,
+    car_date_updated = NOW()
   WHERE car_id = input_car_id;
+
+  IF var_old_model_id IS DISTINCT FROM var_model_id THEN
+    IF NOT EXISTS (
+      SELECT 1
+      FROM car_table
+      WHERE car_model_id = var_old_model_id
+        AND car_is_disabled = false
+    ) THEN
+      UPDATE model_table
+      SET
+        model_is_disabled = true
+      WHERE model_id = var_old_model_id;
+    END IF;
+  END IF;
+
+  -- Old make is no longer used
+  IF var_old_make_id IS DISTINCT FROM var_make_id THEN
+    IF NOT EXISTS (
+      SELECT 1
+      FROM car_table
+      WHERE car_make_id = var_old_make_id
+        AND car_is_disabled = false
+    ) THEN
+      UPDATE make_table
+      SET
+        make_is_disabled = true
+      WHERE make_id = var_old_make_id;
+    END IF;
+  END IF;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1103,5 +1156,341 @@ BEGIN
   INTO return_data;
 
   RETURN COALESCE(return_data, '[]'::JSONB);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION set_catalog_car_availability(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_car_id UUID := (input_data->>'carId')::UUID;
+  input_admin_user_id UUID := (input_data->>'adminUserId')::UUID;
+  input_is_available BOOLEAN := (input_data->>'isAvailable')::BOOLEAN;
+BEGIN
+  UPDATE car_table
+  SET
+    car_is_available = input_is_available,
+    car_date_updated = NOW(),
+    car_updated_by_admin_user_id = input_admin_user_id
+  WHERE car_id = input_car_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION set_catalog_magic_collar_availability(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_magic_collar_id UUID := (input_data->>'magicCollarId')::UUID;
+  input_admin_user_id UUID := (input_data->>'adminUserId')::UUID;
+  input_is_available BOOLEAN := (input_data->>'isAvailable')::BOOLEAN;
+BEGIN
+  UPDATE magic_collar_table
+  SET
+    magic_collar_is_available = input_is_available,
+    magic_collar_date_updated = NOW(),
+    magic_collar_updated_by_admin_user_id = input_admin_user_id
+  WHERE magic_collar_id = input_magic_collar_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION delete_catalog_car(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_car_id UUID := (input_data->>'carId')::UUID;
+  input_admin_user_id UUID := (input_data->>'adminUserId')::UUID;
+
+  var_car_make_id UUID;
+  var_car_model_id UUID;
+BEGIN
+  UPDATE car_table
+  SET
+    car_is_disabled = true,
+    car_date_updated = NOW(),
+    car_updated_by_admin_user_id = input_admin_user_id
+  WHERE car_id = input_car_id
+  RETURNING car_make_id, car_model_id
+  INTO var_car_make_id, var_car_model_id;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM car_table
+    WHERE car_model_id = var_car_model_id
+      AND car_is_disabled = false
+  ) THEN
+    UPDATE model_table
+    SET model_is_disabled = true
+    WHERE model_id = var_car_model_id;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM car_table
+    WHERE car_make_id = var_car_make_id
+      AND car_is_disabled = false
+  ) THEN
+    UPDATE make_table
+    SET make_is_disabled = true
+    WHERE make_id = var_car_make_id;
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION delete_catalog_magic_collar(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_magic_collar_id UUID := (input_data->>'magicCollarId')::UUID;
+  input_admin_user_id UUID := (input_data->>'adminUserId')::UUID;
+BEGIN
+  UPDATE magic_collar_table
+  SET
+    magic_collar_is_disabled = true,
+    magic_collar_date_updated = NOW(),
+    magic_collar_updated_by_admin_user_id = input_admin_user_id
+  WHERE magic_collar_id = input_magic_collar_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION update_magic_collar(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_magic_collar_id UUID := (input_data->>'magicCollarId')::UUID;
+  input_magic_collar_update JSONB := (input_data->'magicCollarUpdate')::JSONB;
+BEGIN
+  UPDATE magic_collar_table
+  SET
+    magic_collar_price = (input_magic_collar_update->>'magic_collar_price')::NUMERIC(10, 2),
+    magic_collar_price_currency = (input_magic_collar_update->>'magic_collar_price_currency')::TEXT,
+    magic_collar_is_available = (input_magic_collar_update->>'magic_collar_is_available')::BOOLEAN,
+    magic_collar_down_payment_price = (input_magic_collar_update->>'magic_collar_down_payment_price')::NUMERIC(10, 2),
+    magic_collar_front_quantity = (input_magic_collar_update->>'magic_collar_front_quantity')::INT,
+    magic_collar_rear_quantity = (input_magic_collar_update->>'magic_collar_rear_quantity')::INT,
+    magic_collar_all_quantity = (input_magic_collar_update->>'magic_collar_all_quantity')::INT,
+    magic_collar_stock_quantity = (input_magic_collar_update->>'magic_collar_stock_quantity')::INT,
+    magic_collar_updated_by_admin_user_id = (input_magic_collar_update->>'magic_collar_updated_by_admin_user_id')::UUID,
+    magic_collar_date_updated = NOW()
+  WHERE magic_collar_id = input_magic_collar_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_admin_orders_page(input_data JSONB)
+RETURNS JSONB
+AS $$
+DECLARE
+  input_page INT := (input_data->>'page')::INT;
+  input_records_per_page INT := (input_data->>'recordsPerPage')::INT;
+  input_search TEXT := TRIM(REGEXP_REPLACE(input_data->>'search', '[%_]', '', 'g'));
+  input_order_status TEXT := input_data->>'orderStatus';
+  input_payment_status TEXT := input_data->>'paymentStatus';
+  input_fulfillment TEXT := input_data->>'fulfillment';
+  input_sort_column TEXT := input_data->>'sortColumnAccessor';
+  input_sort_direction TEXT := input_data->>'sortDirection';
+
+  var_start INT := (input_page - 1) * input_records_per_page;
+  var_total_count INT;
+  var_records JSONB;
+  var_order_number INT;
+
+  return_data JSONB;
+BEGIN
+  IF input_search ~ '^\d+$' THEN
+    var_order_number := input_search::INT;
+  END IF;
+
+  SELECT COUNT(*)
+  INTO var_total_count
+  FROM order_table
+  INNER JOIN user_table
+    ON user_id = order_user_id
+  WHERE order_is_disabled = false
+    AND (input_order_status = 'ALL' OR order_status = input_order_status::order_status)
+    AND (input_payment_status = 'ALL' OR order_payment_status = input_payment_status::order_payment_status)
+    AND (input_fulfillment = 'ALL' OR order_fulfillment = input_fulfillment::order_fulfillment)
+    AND (
+      input_search = '' OR (
+        (var_order_number IS NOT NULL AND order_number = var_order_number)
+        OR (user_first_name || ' ' || user_last_name) ILIKE '%' || input_search || '%'
+        OR user_email ILIKE '%' || input_search || '%'
+      )
+    );
+  SELECT JSONB_AGG(row_data)
+  INTO var_records
+  FROM (
+    SELECT
+      TO_JSONB(order_table.*) ||
+      JSONB_BUILD_OBJECT(
+        'order_user', user_table.*,
+        'order_item_count', (
+          SELECT COUNT(*)
+          FROM order_item_table
+          WHERE order_item_order_id = order_id
+            AND order_item_is_disabled = false
+        ),
+        'order_total', (
+          SELECT SUM(order_item_magic_collar_price)
+          FROM order_item_table
+          WHERE order_item_order_id = order_id
+            AND order_item_is_disabled = false
+        )
+      ) AS row_data
+    FROM order_table
+    INNER JOIN user_table
+      ON user_id = order_user_id
+    WHERE order_is_disabled = false
+      AND (input_order_status = 'ALL' OR order_status = input_order_status::order_status)
+      AND (input_payment_status = 'ALL' OR order_payment_status = input_payment_status::order_payment_status)
+      AND (input_fulfillment = 'ALL' OR order_fulfillment = input_fulfillment::order_fulfillment)
+      AND (
+        input_search = '' OR (
+          (var_order_number IS NOT NULL AND order_number = var_order_number)
+          OR (user_first_name || ' ' || user_last_name) ILIKE '%' || input_search || '%'
+          OR user_email ILIKE '%' || input_search || '%'
+        )
+      )
+    ORDER BY
+      CASE WHEN input_sort_column = 'order_number'         AND input_sort_direction = 'asc'  THEN order_number END ASC,
+      CASE WHEN input_sort_column = 'order_number'         AND input_sort_direction = 'desc' THEN order_number END DESC,
+      CASE WHEN input_sort_column = 'order_date_created'   AND input_sort_direction = 'asc'  THEN order_date_created END ASC,
+      CASE WHEN input_sort_column = 'order_date_created'   AND input_sort_direction = 'desc' THEN order_date_created END DESC,
+      CASE WHEN input_sort_column = 'order_status'         AND input_sort_direction = 'asc'  THEN order_status END ASC,
+      CASE WHEN input_sort_column = 'order_status'         AND input_sort_direction = 'desc' THEN order_status END DESC,
+      CASE WHEN input_sort_column = 'order_payment_status' AND input_sort_direction = 'asc'  THEN order_payment_status END ASC,
+      CASE WHEN input_sort_column = 'order_payment_status' AND input_sort_direction = 'desc' THEN order_payment_status END DESC,
+      CASE WHEN input_sort_column = 'order_fulfillment'    AND input_sort_direction = 'asc'  THEN order_fulfillment END ASC,
+      CASE WHEN input_sort_column = 'order_fulfillment'    AND input_sort_direction = 'desc' THEN order_fulfillment END DESC,
+      order_number DESC
+    LIMIT input_records_per_page
+    OFFSET var_start
+  ) AS subquery;
+
+  return_data := JSONB_BUILD_OBJECT(
+    'records', COALESCE(var_records, '[]'::JSONB),
+    'totalRecords', COALESCE(var_total_count, 0)
+  );
+
+  RETURN return_data;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_admin_batches_page(input_data JSONB)
+RETURNS JSONB
+AS $$
+DECLARE
+  input_page INT := (input_data->>'page')::INT;
+  input_records_per_page INT := (input_data->>'recordsPerPage')::INT;
+  input_search TEXT := TRIM(REGEXP_REPLACE(input_data->>'search', '[%_]', '', 'g'));
+  input_batch_status TEXT := input_data->>'batchStatus';
+  input_sort_column TEXT := input_data->>'sortColumnAccessor';
+  input_sort_direction TEXT := input_data->>'sortDirection';
+
+  var_start INT := (input_page - 1) * input_records_per_page;
+  var_total_count INT;
+  var_records JSONB;
+  var_batch_number INT;
+
+  return_data JSONB;
+BEGIN
+  IF input_search ~ '^\d+$' THEN
+    var_batch_number := input_search::INT;
+  END IF;
+
+  SELECT COUNT(*)
+  INTO var_total_count
+  FROM batch_table
+  WHERE batch_is_disabled = false
+    AND (input_batch_status = 'ALL' OR batch_status = input_batch_status::batch_status)
+    AND (input_search = '' OR (var_batch_number IS NOT NULL AND batch_number = var_batch_number));
+
+  SELECT JSONB_AGG(row_data)
+  INTO var_records
+  FROM (
+    SELECT
+      TO_JSONB(batch_table.*) ||
+      JSONB_BUILD_OBJECT(
+        'batch_order_quantity', (
+          SELECT SUM(order_item_quantity)
+          FROM order_item_table
+          WHERE order_item_batch_id = batch_id
+            AND order_item_is_disabled = false
+        ),
+        'batch_order_total', (
+          SELECT SUM(order_item_price * order_item_quantity)
+          FROM order_item_table
+          WHERE order_item_batch_id = batch_id
+            AND order_item_is_disabled = false
+        )
+      ) AS row_data
+    FROM batch_table
+    WHERE batch_is_disabled = false
+      AND (input_batch_status = 'ALL' OR batch_status = input_batch_status::batch_status)
+      AND (input_search = '' OR (var_batch_number IS NOT NULL AND batch_number = var_batch_number))
+    ORDER BY
+      CASE WHEN input_sort_column = 'batch_number' AND input_sort_direction = 'asc' THEN batch_number END ASC,
+      CASE WHEN input_sort_column = 'batch_number' AND input_sort_direction = 'desc' THEN batch_number END DESC,
+      CASE WHEN input_sort_column = 'batch_date_created' AND input_sort_direction = 'asc' THEN batch_date_created END ASC,
+      CASE WHEN input_sort_column = 'batch_date_created' AND input_sort_direction = 'desc' THEN batch_date_created END DESC,
+      CASE WHEN input_sort_column = 'batch_status' AND input_sort_direction = 'asc' THEN batch_status END ASC,
+      CASE WHEN input_sort_column = 'batch_status' AND input_sort_direction = 'desc' THEN batch_status END DESC,
+      batch_number DESC
+    LIMIT input_records_per_page
+    OFFSET var_start
+  ) AS subquery;
+
+  return_data := JSONB_BUILD_OBJECT(
+    'records', COALESCE(var_records, '[]'::JSONB),
+    'totalRecords', COALESCE(var_total_count, 0)
+  );
+
+  RETURN return_data;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION transition_batch_status(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_batch_id   UUID := (input_data->>'batchId')::UUID;
+  input_next_status batch_status := (input_data->>'nextStatus')::batch_status;
+  input_updated_by UUID := (input_data->>'updatedBy')::UUID;
+
+  var_old_status batch_status;
+BEGIN
+  SELECT batch_status
+  INTO var_old_status
+  FROM batch_table
+  WHERE batch_id = input_batch_id
+    AND batch_is_disabled = false
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Batch % not found or is disabled', input_batch_id;
+  END IF;
+
+  -- Guard: reject if already on target status
+  IF var_old_status = input_next_status THEN
+    RAISE EXCEPTION 'Batch is already in status %', input_next_status;
+  END IF;
+
+  -- Update batch status + timestamp
+  UPDATE batch_table
+  SET
+    batch_status = input_next_status,
+    batch_date_updated = NOW()
+  WHERE batch_id = input_batch_id;
+
+  -- Insert audit log
+  INSERT INTO batch_status_log_table (
+    batch_status_log_old_status,
+    batch_status_log_new_status,
+    batch_status_log_batch_id,
+    batch_status_log_updated_by
+  ) VALUES (
+    var_old_status,
+    input_next_status,
+    input_batch_id,
+    input_updated_by
+  );
 END;
 $$ LANGUAGE plpgsql;

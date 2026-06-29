@@ -168,7 +168,7 @@ const CheckoutSuccessPage = () => {
               <Button
                 variant="filled"
                 color="dark"
-                onClick={() => router.push("/user/order")}
+                onClick={() => router.push("/user/orders")}
                 leftSection={<IconReceipt size={14} />}
               >
                 View Order List

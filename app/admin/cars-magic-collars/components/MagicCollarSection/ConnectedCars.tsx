@@ -54,6 +54,7 @@ const ConnectedCars = ({
         await setCatalogCarAvailability(supabaseClient, {
           carId: car.car_id,
           isAvailable: !car.car_is_available,
+          adminUserId: userData.id,
         });
         notifications.show({
           message: `Car availability updated successfully.`,
@@ -121,6 +122,7 @@ const ConnectedCars = ({
       try {
         await deleteCatalogCar(supabaseClient, {
           carId,
+          adminUserId: userData.id,
         });
         notifications.show({
           message: "Car deleted successfully.",

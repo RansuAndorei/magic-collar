@@ -130,13 +130,12 @@ export const setCatalogCarAvailability = async (
   params: {
     carId: string;
     isAvailable: boolean;
+    adminUserId: string;
   },
 ) => {
-  const { carId, isAvailable } = params;
-  const { error } = await supabaseClient
-    .from("car_table")
-    .update({ car_is_available: isAvailable })
-    .eq("car_id", carId);
+  const { error } = await supabaseClient.rpc("set_catalog_car_availability", {
+    input_data: params,
+  });
   if (error) throw error;
 };
 
@@ -144,13 +143,12 @@ export const deleteCatalogCar = async (
   supabaseClient: SupabaseClient<Database>,
   params: {
     carId: string;
+    adminUserId: string;
   },
 ) => {
-  const { carId } = params;
-  const { error } = await supabaseClient
-    .from("car_table")
-    .update({ car_is_disabled: true })
-    .eq("car_id", carId);
+  const { error } = await supabaseClient.rpc("delete_catalog_car", {
+    input_data: params,
+  });
   if (error) throw error;
 };
 
@@ -262,13 +260,12 @@ export const setCatalogMagicCollarAvailability = async (
   params: {
     magicCollarId: string;
     isAvailable: boolean;
+    adminUserId: string;
   },
 ) => {
-  const { magicCollarId, isAvailable } = params;
-  const { error } = await supabaseClient
-    .from("magic_collar_table")
-    .update({ magic_collar_is_available: isAvailable })
-    .eq("magic_collar_id", magicCollarId);
+  const { error } = await supabaseClient.rpc("set_catalog_magic_collar_availability", {
+    input_data: params,
+  });
   if (error) throw error;
 };
 
@@ -276,13 +273,12 @@ export const deleteCatalogMagicCollar = async (
   supabaseClient: SupabaseClient<Database>,
   params: {
     magicCollarId: string;
+    adminUserId: string;
   },
 ) => {
-  const { magicCollarId } = params;
-  const { error } = await supabaseClient
-    .from("magic_collar_table")
-    .update({ magic_collar_is_disabled: true })
-    .eq("magic_collar_id", magicCollarId);
+  const { error } = await supabaseClient.rpc("delete_catalog_magic_collar", {
+    input_data: params,
+  });
   if (error) throw error;
 };
 
@@ -320,11 +316,7 @@ export const updateMagicCollar = async (
     magicCollarId: string;
   },
 ) => {
-  const { magicCollarUpdate, magicCollarId } = params;
-  const { error } = await supabaseClient
-    .from("magic_collar_table")
-    .update(magicCollarUpdate)
-    .eq("magic_collar_id", magicCollarId);
+  const { error } = await supabaseClient.rpc("update_magic_collar", { input_data: params });
   if (error) throw error;
 };
 

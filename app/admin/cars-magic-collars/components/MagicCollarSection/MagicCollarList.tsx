@@ -137,6 +137,7 @@ const MagicCollarList = () => {
         await setCatalogMagicCollarAvailability(supabaseClient, {
           magicCollarId: magicCollar.magic_collar_id,
           isAvailable: !magicCollar.magic_collar_is_available,
+          adminUserId: userData.id,
         });
         notifications.show({
           message: `Magic Collar availability updated successfully.`,
@@ -216,6 +217,7 @@ const MagicCollarList = () => {
 
         await deleteCatalogMagicCollar(supabaseClient, {
           magicCollarId,
+          adminUserId: userData.id,
         });
         refreshTables();
         notifications.show({

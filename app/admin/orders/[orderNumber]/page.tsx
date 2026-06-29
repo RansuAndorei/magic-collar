@@ -1,10 +1,13 @@
 import { insertError } from "@/app/actions";
+import {
+  getCustomerOrder,
+  getOrderPaymentTotals,
+  getPaymentChannelList,
+} from "@/app/user/orders/[orderNumber]/actions";
+import OrderDetailPage from "@/app/user/orders/[orderNumber]/components/OrderDetailPage";
 import { isAppError } from "@/utils/functions";
 import { createSupabaseServerClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-
-import { getCustomerOrder, getOrderPaymentTotals, getPaymentChannelList } from "./actions";
-import OrderDetailPage from "./components/OrderDetailPage";
 
 type Props = {
   params: Promise<{
@@ -40,8 +43,8 @@ const Page = async ({ params }: Props) => {
       await insertError(supabaseClient, {
         errorTableInsert: {
           error_message: e.message,
-          error_url: `/user/order/${orderNumber}`,
-          error_function: "fetchOrderPageInitialData",
+          error_url: `/user/orders/${orderNumber}`,
+          error_function: "fetchAdminOrdersPageInitialData",
           error_user_email: user.email,
           error_user_id: user.id,
         },

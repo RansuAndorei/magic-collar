@@ -52,11 +52,11 @@ const OrderItem = ({ order }: Props) => {
       p="lg"
       role="button"
       tabIndex={0}
-      onClick={() => router.push(`/user/order/${order.order_number}`)}
+      onClick={() => router.push(`/user/orders/${order.order_number}`)}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          router.push(`/user/order/${order.order_number}`);
+          router.push(`/user/orders/${order.order_number}`);
         }
       }}
       style={{

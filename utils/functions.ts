@@ -99,8 +99,11 @@ export const formatPhilippineMobileNumber = (phoneNumber: string) =>
 
 export const getProductTitle = (make: string, model: string) => `Magic Collar for ${make} ${model}`;
 
-export const getProductSubtitle = (modelCode: string, yearStart: number, yearEnd: number | null) =>
-  [modelCode, getYearRange(yearStart, yearEnd)].filter(Boolean).join(" / ");
+export const getProductSubtitle = (
+  modelCode: string | null,
+  yearStart: number,
+  yearEnd: number | null,
+) => [modelCode, getYearRange(yearStart, yearEnd)].filter(Boolean).join(" / ");
 
 export const getYearRange = (yearStart: number, yearEnd: number | null) =>
   yearEnd ? `${yearStart}-${yearEnd}` : `${yearStart}-present`;

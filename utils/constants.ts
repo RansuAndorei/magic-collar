@@ -1,24 +1,32 @@
 import {
+  IconAlertTriangle,
   IconBrandFacebook,
   IconBrandInstagram,
   IconBrandTiktok,
   IconBrandYoutube,
   IconCar,
+  IconCash,
   IconChartBar,
+  IconCircleCheck,
   IconClipboardList,
+  IconClockHour4,
   IconHeadset,
   IconMail,
   IconMapPin,
   IconMessageCircle,
   IconPackage,
+  IconPackageExport,
   IconPhone,
   IconPhotoScan,
   IconSettings2,
   IconShieldCheck,
+  IconShip,
   IconShoppingBag,
+  IconShoppingCartCheck,
   IconTag,
-  IconTags,
+  IconTruck,
   IconTruckDelivery,
+  IconX,
 } from "@tabler/icons-react";
 import {
   BatchStatusEnum,
@@ -280,19 +288,28 @@ export const ORDER_STATUS_METADATA: StatusMetadata<OrderStatusEnum> = {
   PENDING: {
     color: "yellow",
     description: "The order is being processed and prepared for fulfillment.",
+    icon: IconClockHour4,
   },
   "FOR DELIVERY": {
     color: "blue",
     description: "The order has been dispatched and is on its way to the customer.",
+    icon: IconTruckDelivery,
   },
   DELIVERED: {
     color: "green",
     description: "The order has been successfully delivered to the customer.",
+    icon: IconCircleCheck,
   },
   FORFEITED: {
     color: "red",
     description:
       "The order was not fully paid within the required period and has been forfeited. Any down payment made is non-refundable.",
+    icon: IconAlertTriangle,
+  },
+  CANCELLED: {
+    color: "gray",
+    description: "The order has been cancelled and will not proceed.",
+    icon: IconX,
   },
 };
 
@@ -300,24 +317,34 @@ export const ORDER_ITEM_STATUS_METADATA: StatusMetadata<OrderItemStatusEnum> = {
   PENDING: {
     color: "yellow",
     description: "The order is being processed and prepared for fulfillment.",
+    icon: IconClockHour4,
   },
   "IN STOCK": {
     color: "teal",
     description:
       "The item is available in stock and reserved for this order. It is ready to proceed to delivery once all requirements, including payment, have been completed.",
+    icon: IconPackage,
   },
   "FOR DELIVERY": {
     color: "blue",
     description: "The order has been dispatched and is on its way to the customer.",
+    icon: IconTruckDelivery,
   },
   DELIVERED: {
     color: "green",
     description: "The order has been successfully delivered to the customer.",
+    icon: IconCircleCheck,
   },
   FORFEITED: {
     color: "red",
     description:
       "The order was not fully paid within the required period and has been forfeited. Any down payment made is non-refundable.",
+    icon: IconAlertTriangle,
+  },
+  CANCELLED: {
+    color: "gray",
+    description: "The item has been cancelled and will not proceed.",
+    icon: IconX,
   },
 };
 
@@ -326,20 +353,24 @@ export const PAYMENT_STATUS_METADATA: StatusMetadata<OrderPaymentStatusEnum> = {
     color: "yellow",
     description:
       "Payment has not been completed yet. If the order becomes ready for delivery while payment remains unpaid, delivery will be put on hold until payment is received.",
+    icon: IconClockHour4,
   },
   PARTIALLY_PAID: {
     color: "orange",
     description:
       "A partial payment has been received for this order. If the order becomes ready for delivery and the remaining balance is still unpaid, delivery will be put on hold until full payment is completed.",
+    icon: IconCash,
   },
   PAID: {
     color: "green",
     description: "This order has been fully paid.",
+    icon: IconCircleCheck,
   },
   OVERDUE: {
     color: "red",
     description:
       "Payment is past the required due date. The payment deadline is 30 days from the date the order is marked for delivery.",
+    icon: IconAlertTriangle,
   },
 };
 
@@ -348,31 +379,38 @@ export const BATCH_STATUS_METADATA: StatusMetadata<BatchStatusEnum> = {
     color: "yellow",
     description:
       "Waiting for the batch to reach the required quantity before placing an order with the supplier.",
+    icon: IconClockHour4,
   },
   "READY FOR ORDER": {
     color: "grape",
     description:
       "The batch has reached the required quantity and is ready to be ordered from the supplier.",
+    icon: IconShoppingCartCheck,
   },
   ORDERED: {
     color: "blue",
     description: "The batch order has been placed with the supplier.",
+    icon: IconTruck,
   },
   ENROUTE: {
     color: "cyan",
     description: "The batch is currently being shipped to the Philippines.",
+    icon: IconShip,
   },
   "CUSTOMS CLEARANCE": {
     color: "orange",
     description: "The batch is being processed by customs authorities.",
+    icon: IconPackageExport,
   },
   "READY FOR SHIPPING": {
     color: "green",
     description: "The batch has arrived and orders are ready to be shipped to customers.",
+    icon: IconPackage,
   },
   CANCELLED: {
     color: "red",
     description: "The batch has been cancelled and will not proceed.",
+    icon: IconX,
   },
 };
 
@@ -382,6 +420,7 @@ export const ORDER_STATUS_OPTIONS: { value: OrderStatusEnum | "ALL"; label: stri
   { value: "FOR DELIVERY", label: "For Delivery" },
   { value: "DELIVERED", label: "Delivered" },
   { value: "FORFEITED", label: "Forfeited" },
+  { value: "CANCELLED", label: "Cancelled" },
 ];
 
 export const PAYMENT_STATUS_OPTIONS: { value: OrderPaymentStatusEnum | "ALL"; label: string }[] = [
@@ -392,6 +431,23 @@ export const PAYMENT_STATUS_OPTIONS: { value: OrderPaymentStatusEnum | "ALL"; la
   { value: "OVERDUE", label: "Overdue" },
 ];
 
+export const FULFILLMENT_OPTIONS = [
+  { value: "ALL", label: "All fulfillment" },
+  { value: "DELIVERY", label: "Delivery" },
+  { value: "PICKUP", label: "Pickup" },
+];
+
+export const BATCH_STATUS_OPTIONS: { value: BatchStatusEnum | "ALL"; label: string }[] = [
+  { value: "ALL", label: "All" },
+  { value: "PENDING", label: "Pending" },
+  { value: "READY FOR ORDER", label: "Ready For Order" },
+  { value: "ORDERED", label: "Ordered" },
+  { value: "ENROUTE", label: "Enroute" },
+  { value: "CUSTOMS CLEARANCE", label: "Customs Clearance" },
+  { value: "READY FOR SHIPPING", label: "Ready For Shipping" },
+  { value: "CANCELLED", label: "Cancelled" },
+];
+
 export const ADMIN_NAV_GROUP = [
   {
     label: "Overview",
@@ -400,7 +456,7 @@ export const ADMIN_NAV_GROUP = [
         label: "Analytics",
         icon: IconChartBar,
         meta: "Sales, demand, batch timing",
-        href: "/admin",
+        href: "/admin/analytics",
       },
     ],
   },
@@ -413,16 +469,24 @@ export const ADMIN_NAV_GROUP = [
         meta: "Fitment and collar records",
         href: "/admin/cars-magic-collars",
       },
-      { label: "Makes & Models", icon: IconTags, meta: "Reference lists" },
-      { label: "Inventory", icon: IconPackage, meta: "Stock quantities" },
     ],
   },
   {
     label: "Fulfillment",
     links: [
-      { label: "Orders", icon: IconShoppingBag, meta: "Item status and delivery setup" },
+      {
+        label: "Orders",
+        icon: IconShoppingBag,
+        meta: "List of orders and items",
+        href: "/admin/orders",
+      },
       { label: "Payment Proofs", icon: IconPhotoScan, meta: "Approve or reject uploads" },
-      { label: "Batches", icon: IconClipboardList, meta: "Batch status updates" },
+      {
+        label: "Batches",
+        icon: IconClipboardList,
+        meta: "Batch status updates",
+        href: "/admin/batches",
+      },
       { label: "Delivery Details", icon: IconTruckDelivery, meta: "Couriers and pickup addresses" },
     ],
   },
@@ -442,3 +506,10 @@ export const STATUS_OPTIONS = [
   { value: "true", label: "Available" },
   { value: "false", label: "Unavailable" },
 ];
+
+export const BATCH_NEXT_STATUS: Partial<Record<BatchStatusEnum, BatchStatusEnum>> = {
+  "READY FOR ORDER": "ORDERED",
+  ORDERED: "ENROUTE",
+  ENROUTE: "CUSTOMS CLEARANCE",
+  "CUSTOMS CLEARANCE": "READY FOR SHIPPING",
+};

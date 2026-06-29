@@ -1,4 +1,7 @@
 import { insertError } from "@/app/actions";
+import TableColumnVisibility, {
+  TableColumnVisibilityOption,
+} from "@/app/admin/components/TableColumnVisibility";
 import { useUserData } from "@/stores/useUserStore";
 import { PAGINATION_OPTIONS, STATUS_OPTIONS } from "@/utils/constants";
 import {
@@ -52,6 +55,17 @@ const emptyFormValues = {
   existingAttachment: null,
 };
 
+const orderColumnOptions: TableColumnVisibilityOption[] = [
+  { value: "car", label: "Car" },
+  { value: "car_year", label: "Year" },
+  { value: "car_date_created", label: "Date Created" },
+  { value: "collar", label: "Magic Collar" },
+  { value: "magic_collar_price", label: "Price" },
+  { value: "magic_collar_stock_quantity", label: "Stock" },
+  { value: "status", label: "Status" },
+  { value: "actions", label: "Actions" },
+];
+
 type Props = { makeList: string[]; modelList: Record<string, string[]> };
 
 const CarList = ({ makeList, modelList }: Props) => {
@@ -78,6 +92,9 @@ const CarList = ({ makeList, modelList }: Props) => {
   });
   const [opened, setOpened] = useState(false);
   const [values, setValues] = useState<CarFormType>(emptyFormValues);
+  const [visibleColumns, setVisibleColumns] = useState(
+    orderColumnOptions.map((column) => column.value),
+  );
 
   useEffect(() => {
     setCarPage(1);
@@ -130,6 +147,7 @@ const CarList = ({ makeList, modelList }: Props) => {
         await setCatalogCarAvailability(supabaseClient, {
           carId: car.car_id,
           isAvailable: !car.car_is_available,
+          adminUserId: userData.id,
         });
         notifications.show({
           message: `Car availability updated successfully.`,
@@ -197,6 +215,7 @@ const CarList = ({ makeList, modelList }: Props) => {
       try {
         await deleteCatalogCar(supabaseClient, {
           carId,
+          adminUserId: userData.id,
         });
         refreshTables();
         notifications.show({
@@ -262,7 +281,7 @@ const CarList = ({ makeList, modelList }: Props) => {
       magicCollarReferenceNumber: car.car_magic_collar.magic_collar_reference_number,
       make: car.car_make.make,
       model: car.car_model.model,
-      modelCode: car.car_model_code,
+      modelCode: car.car_model_code ?? "",
       yearStart: car.car_model_year_start,
       yearEnd: car.car_model_year_end,
       image: null,
@@ -465,9 +484,14 @@ const CarList = ({ makeList, modelList }: Props) => {
     [isMobile, loadingRow, openEditModal, confirmAvailabilityChange, confirmDelete],
   );
 
+  const visibleTableColumns = useMemo(
+    () => columns.filter((column) => visibleColumns.includes(String(column.accessor))),
+    [columns, visibleColumns],
+  );
+
   return (
     <>
-      <Group justify="space-between" mb="md" align="flex-end">
+      <Group justify="space-between" mb="md">
         <Group>
           <Box>
             <Title order={2} size="h3">
@@ -491,6 +515,11 @@ const CarList = ({ makeList, modelList }: Props) => {
             onChange={(value) => setCarStatus(value ?? "null")}
             allowDeselect={false}
           />
+          <TableColumnVisibility
+            columns={orderColumnOptions}
+            visibleColumns={visibleColumns}
+            onChange={setVisibleColumns}
+          />
         </Group>
         <Button rightSection={<IconPlus size={14} />} onClick={openCreateModal}>
           Add
@@ -504,7 +533,7 @@ const CarList = ({ makeList, modelList }: Props) => {
         page={carPage}
         fetching={isFetchingCars}
         sortStatus={carSortStatus}
-        columns={columns}
+        columns={visibleTableColumns}
         onPageChange={handlePageChange}
         onRecordsPerPageChange={handleRecordsPerPageChange}
         onSortStatusChange={handleSortStatusChange}

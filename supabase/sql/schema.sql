@@ -36,7 +36,8 @@ CREATE TYPE order_status AS ENUM(
   'PENDING',
   'FOR DELIVERY',
   'DELIVERED',
-  'FORFEITED'
+  'FORFEITED',
+  'CANCELLED'
 );
 
 CREATE TYPE order_item_status AS ENUM(
@@ -44,7 +45,8 @@ CREATE TYPE order_item_status AS ENUM(
   'IN STOCK',
   'FOR DELIVERY',
   'DELIVERED',
-  'FORFEITED'
+  'FORFEITED',
+  'CANCELLED'
 );
 
 CREATE TYPE payment_status AS ENUM(
@@ -192,7 +194,7 @@ CREATE TABLE barangay_table(
 CREATE TABLE make_table(
   make_id UUID DEFAULT uuid_generate_v4() UNIQUE PRIMARY KEY NOT NULL,
   make_date_created TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  make VARCHAR(4000) NOT NULL,
+  make VARCHAR(4000) UNIQUE NOT NULL,
   make_is_disabled BOOLEAN DEFAULT false NOT NULL,
   make_is_available BOOLEAN DEFAULT true NOT NULL
 );
@@ -204,7 +206,8 @@ CREATE TABLE model_table(
   model_is_disabled BOOLEAN DEFAULT false NOT NULL,
   model_is_available BOOLEAN DEFAULT true NOT NULL,
 
-  model_make_id UUID REFERENCES make_table(make_id) NOT NULL
+  model_make_id UUID REFERENCES make_table(make_id) NOT NULL,
+  UNIQUE(model_make_id, model)
 );
 
 CREATE TABLE magic_collar_table(
@@ -256,7 +259,7 @@ CREATE TABLE car_table(
   car_is_disabled BOOLEAN DEFAULT false NOT NULL,
   car_is_available BOOLEAN DEFAULT true NOT NULL,
 
-  car_model_code TEXT NOT NULL,
+  car_model_code TEXT,
   car_model_year_start INT NOT NULL,
   car_model_year_end INT,
 

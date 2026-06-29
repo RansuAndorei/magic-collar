@@ -119,7 +119,7 @@ const ProfileDropdown = () => {
           <Menu.Item leftSection={<IconUser size={14} />} component={Link} href="/user/profile">
             Profile
           </Menu.Item>
-          <Menu.Item leftSection={<IconReceipt size={14} />} component={Link} href="/user/order">
+          <Menu.Item leftSection={<IconReceipt size={14} />} component={Link} href="/user/orders">
             Orders
           </Menu.Item>
 

@@ -30,6 +30,8 @@ const PaymentBreakdownSection = ({
   const pathname = usePathname();
   const userData = useUserData();
 
+  const isAdmin = pathname.startsWith("/admin");
+
   const [paymentChannelId, setPaymentChannelId] = useState<string | null>(
     paymentChannelList[0].payment_channel_id ?? null,
   );
@@ -172,7 +174,7 @@ const PaymentBreakdownSection = ({
 
         <Divider />
 
-        {balance > 0 ? (
+        {balance > 0 && !isAdmin ? (
           <UploadPayment
             isSubmittingPayment={isSubmittingPayment}
             paymentChanneList={paymentChannelList}
@@ -182,11 +184,12 @@ const PaymentBreakdownSection = ({
             setPaymentProof={setPaymentProof}
             handleSubmitPaymentProof={handleSubmitPaymentProof}
           />
-        ) : (
+        ) : null}
+        {balance === 0 ? (
           <Alert color="green" title="Payment complete">
             This order is fully paid. No further installment upload is needed.
           </Alert>
-        )}
+        ) : null}
 
         <PaymentHistory
           orderId={order.order_id}

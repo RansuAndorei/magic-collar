@@ -27,7 +27,7 @@ const AdminSidebar = () => {
               {group.label}
             </Text>
             {group.links.map(({ label, meta, icon: Icon, href }) => {
-              const isActive = href ? pathname === href : false;
+              const isActive = href ? pathname.startsWith(href) : false;
               const content = (
                 <Group
                   gap="sm"
@@ -52,11 +52,7 @@ const AdminSidebar = () => {
               );
 
               return href ? (
-                <Link
-                  key={label}
-                  href={href}
-                  style={{ color: "inherit", textDecoration: "none" }}
-                >
+                <Link key={label} href={href} style={{ color: "inherit", textDecoration: "none" }}>
                   {content}
                 </Link>
               ) : (

@@ -30,7 +30,6 @@ const Header = () => {
   const isAdmin = userProfile?.user_role === "ADMIN";
   const isOnboarding = pathname === "/user/onboarding";
   const isAdminPath = pathname.startsWith("/admin");
-  const isNotAdminRoute = !pathname.includes("/admin");
   const isShopRoute = pathname.includes("/shop");
 
   const handleLogoClick = (e: React.MouseEvent) => {
@@ -138,8 +137,8 @@ const Header = () => {
               </Button>
             ) : null}
 
-            {!isOnboarding && isAdmin && isNotAdminRoute ? (
-              <Button component={Link} href="/admin/dashboard">
+            {!isOnboarding && isAdmin && !isAdminPath ? (
+              <Button component={Link} href="/admin/analytics">
                 Admin Dashboard
               </Button>
             ) : null}

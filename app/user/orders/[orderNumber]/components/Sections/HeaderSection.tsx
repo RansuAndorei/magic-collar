@@ -1,7 +1,7 @@
 import { formatDate } from "@/utils/functions";
 import { Button, Group, rem, Stack, Text, Title } from "@mantine/core";
 import { IconArrowLeft } from "@tabler/icons-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 type Props = {
   orderNumber: number;
@@ -10,6 +10,9 @@ type Props = {
 
 const HeaderSection = ({ orderNumber, dateCreated }: Props) => {
   const router = useRouter();
+  const pathname = usePathname();
+
+  const isAdmin = pathname.startsWith("/admin");
 
   return (
     <Group justify="space-between" align="flex-start">
@@ -26,7 +29,7 @@ const HeaderSection = ({ orderNumber, dateCreated }: Props) => {
         variant="subtle"
         color="gray"
         leftSection={<IconArrowLeft size={16} />}
-        onClick={() => router.push("/user/order")}
+        onClick={() => router.push(`/${isAdmin ? "admin" : "user"}/orders`)}
       >
         Back to Orders
       </Button>

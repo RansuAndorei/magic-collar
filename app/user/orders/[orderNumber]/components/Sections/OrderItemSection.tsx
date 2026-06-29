@@ -10,7 +10,6 @@ import {
 } from "@/utils/functions";
 import { OrderWithOrderItemType } from "@/utils/types";
 import { Badge, Box, Card, Group, rem, Stack, Text, UnstyledButton } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
 import { IconBox, IconChevronDown, IconHistory } from "@tabler/icons-react";
 import Image from "next/image";
 import { useState } from "react";
@@ -23,8 +22,7 @@ type Props = {
 
 const OrderItemSection = ({ order }: Props) => {
   const [showAll, setShowAll] = useState(false);
-
-  const [timelineOpened, { open: openTimeline, close: closeTimeline }] = useDisclosure(false);
+  const [activeTimelineItemId, setActiveTimelineItemId] = useState<string | null>(null);
 
   const visibleItems = showAll
     ? order.order_item
@@ -111,7 +109,7 @@ const OrderItemSection = ({ order }: Props) => {
                     />
                     {item.order_item_batch && (
                       <UnstyledButton
-                        onClick={openTimeline}
+                        onClick={() => setActiveTimelineItemId(item.order_item_id)}
                         style={{
                           display: "inline-flex",
                           alignItems: "center",
@@ -139,8 +137,8 @@ const OrderItemSection = ({ order }: Props) => {
 
                 <OrderItemStatusTimelineModal
                   orderItemId={item.order_item_id}
-                  opened={timelineOpened}
-                  onClose={closeTimeline}
+                  opened={activeTimelineItemId === item.order_item_id}
+                  onClose={() => setActiveTimelineItemId(null)}
                 />
               </>
             </Stack>
