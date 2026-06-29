@@ -14,6 +14,7 @@ import {
   Button,
   Card,
   Collapse,
+  Divider,
   Group,
   Loader,
   Stack,
@@ -167,103 +168,114 @@ const PaymentHistory = ({ orderId, historyOpen, toggleHistory }: Props) => {
                     style={{
                       flex: 1,
                       display: "flex",
-                      gap: 12,
-                      alignItems: "flex-start",
+                      flexDirection: "column",
+                      gap: 10,
                       minWidth: 0,
                     }}
                   >
-                    <Stack gap={6} style={{ flex: 1, minWidth: 0 }}>
-                      <Group gap="xs" align="center">
-                        <Badge
-                          variant="light"
-                          size="sm"
-                          radius="xl"
-                          leftSection={<Icon size={12} />}
-                          style={{ background: badgeStyle.bg, color: badgeStyle.color }}
-                        >
-                          {status}
-                        </Badge>
-                        <Text size="xs" c="dimmed">
-                          {formatDate(new Date(payment.order_payment_date_created))}
-                        </Text>
-                      </Group>
-
-                      {payment.order_payment_amount ? (
-                        <Text size="xl" fw={500} lh={1.2}>
-                          {formatCurrency(Number(payment.order_payment_amount), {
-                            minimumFractionDigits: 0,
-                          })}
-                        </Text>
-                      ) : (
-                        <Text size="sm" c="dimmed" fs="italic">
-                          Awaiting verification
-                        </Text>
-                      )}
-
-                      <Group gap={6} align="center">
-                        <Text size="xs" c="dimmed">
-                          {payment.order_payment_payment_channel?.payment_channel_provider_name ??
-                            "Payment channel"}
-                        </Text>
-                        {payment.order_payment_transaction_id ? (
-                          <>
-                            <Box
-                              style={{
-                                width: 3,
-                                height: 3,
-                                borderRadius: "50%",
-                                background: "var(--mantine-color-dimmed)",
-                              }}
-                            />
-                            <Text size="xs" c="dimmed" ff="mono">
-                              Ref: {payment.order_payment_transaction_id}
-                            </Text>
-                          </>
-                        ) : (
-                          <Text size="xs" c="dimmed" fs="italic">
-                            · No reference yet
-                          </Text>
-                        )}
-                      </Group>
-
-                      {payment.order_payment_rejection_reason && (
-                        <Group
-                          gap={6}
-                          align="flex-start"
-                          p="xs"
-                          style={{
-                            background: "#FCEBEB",
-                            borderRadius: "var(--mantine-radius-sm)",
-                          }}
-                        >
-                          <IconAlertCircle
-                            size={14}
-                            color="#A32D2D"
-                            style={{ flexShrink: 0, marginTop: 1 }}
-                          />
-                          <Text size="xs" style={{ color: "#791F1F", lineHeight: 1.5 }}>
-                            {payment.order_payment_rejection_reason}
+                    {/* Top row: badge + date on left, proof button on right */}
+                    <Group justify="space-between" align="flex-start" gap="xs" wrap="nowrap">
+                      <Stack gap={8} style={{ minWidth: 0, flex: 1 }}>
+                        {/* Status + date */}
+                        <Group gap={8} align="center">
+                          <Badge
+                            variant="light"
+                            size="sm"
+                            radius="xl"
+                            leftSection={<Icon size={11} />}
+                            style={{ background: badgeStyle.bg, color: badgeStyle.color }}
+                          >
+                            {status}
+                          </Badge>
+                          <Text size="xs" c="dimmed">
+                            {formatDate(new Date(payment.order_payment_date_created))}
                           </Text>
                         </Group>
-                      )}
-                    </Stack>
 
-                    {payment.order_payment_proof_attachment?.attachment_path && (
-                      <Anchor
-                        href={payment.order_payment_proof_attachment.attachment_path}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ flexShrink: 0 }}
-                      >
-                        <Button
-                          variant="outline"
-                          size="xs"
-                          leftSection={<IconFileSearch size={14} />}
-                          color="blue"
+                        {/* Amount */}
+                        {payment.order_payment_amount ? (
+                          <Text size="xl" fw={500} lh={1}>
+                            {formatCurrency(Number(payment.order_payment_amount), {
+                              minimumFractionDigits: 0,
+                            })}
+                          </Text>
+                        ) : !payment.order_payment_rejection_reason ? (
+                          <Text size="sm" c="dimmed" fs="italic">
+                            Awaiting verification
+                          </Text>
+                        ) : null}
+
+                        {/* Channel + reference */}
+                        <Group gap={6} align="center">
+                          <Text size="xs" c="dimmed">
+                            {payment.order_payment_payment_channel?.payment_channel_provider_name ??
+                              "Payment channel"}
+                          </Text>
+                          {payment.order_payment_transaction_id ? (
+                            <>
+                              <Box
+                                style={{
+                                  width: 3,
+                                  height: 3,
+                                  borderRadius: "50%",
+                                  background: "var(--mantine-color-dimmed)",
+                                }}
+                              />
+                              <Text size="xs" c="dimmed" ff="mono">
+                                Ref: {payment.order_payment_transaction_id}
+                              </Text>
+                            </>
+                          ) : !payment.order_payment_rejection_reason ? (
+                            <Text size="xs" c="dimmed" fs="italic">
+                              · No reference yet
+                            </Text>
+                          ) : null}
+                        </Group>
+                      </Stack>
+
+                      {/* Proof button aligned to top-right */}
+                      {payment.order_payment_proof_attachment?.attachment_path && (
+                        <Anchor
+                          href={payment.order_payment_proof_attachment.attachment_path}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ flexShrink: 0 }}
                         >
-                          View proof
-                        </Button>
-                      </Anchor>
+                          <Button
+                            variant="light"
+                            size="xs"
+                            leftSection={<IconFileSearch size={13} />}
+                            color="blue"
+                          >
+                            View proof
+                          </Button>
+                        </Anchor>
+                      )}
+                    </Group>
+
+                    {/* Rejection reason */}
+                    {payment.order_payment_rejection_reason && (
+                      <>
+                        <Divider />
+                        <Group gap={8} align="flex-start" wrap="nowrap">
+                          <IconAlertCircle
+                            size={14}
+                            style={{
+                              color: "var(--mantine-color-red-6)",
+                              marginTop: 2,
+                              flexShrink: 0,
+                            }}
+                          />
+                          <Stack gap={2}>
+                            <Text size="xs" fw={500} c="red">
+                              Reason for rejection
+                            </Text>
+                            <Text size="xs" c="red">
+                              {payment.order_payment_rejection_reason}
+                            </Text>
+                          </Stack>
+                        </Group>
+                      </>
                     )}
                   </Box>
                 </Card>

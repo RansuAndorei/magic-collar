@@ -751,30 +751,20 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION get_order_payment_totals(input_data JSONB)
-RETURNS JSONB
+RETURNS NUMERIC
 AS $$
 DECLARE
-  input_order_number INT := (input_data->>'order_number')::INT;
-
+  input_order_number INT := (input_data->>'orderNumber')::INT;
   var_pending_total  NUMERIC := 0;
-  var_approved_total NUMERIC := 0;
-
-  return_data JSONB;
+  return_data NUMERIC;
 BEGIN
   SELECT
-    COALESCE(SUM(CASE WHEN order_payment_request_status = 'PENDING'  THEN order_payment_amount ELSE 0 END), 0),
-    COALESCE(SUM(CASE WHEN order_payment_request_status = 'APPROVED' THEN order_payment_amount ELSE 0 END), 0)
-  INTO
-    var_pending_total,
-    var_approved_total
+    COALESCE(SUM(CASE WHEN order_payment_request_status = 'APPROVED'  THEN order_payment_amount ELSE 0 END), 0)
+  INTO return_data
   FROM order_payment_table
-  JOIN order_table ON order_payment_order_id = order_id
+  INNER JOIN order_table
+    ON order_payment_order_id = order_id
   WHERE order_number = input_order_number;
-
-  return_data := jsonb_build_object(
-    'pendingPaymentTotal', var_pending_total,
-    'approvedPaymentTotal', var_approved_total
-  );
 
   RETURN return_data;
 END;
@@ -1492,5 +1482,202 @@ BEGIN
     input_batch_id,
     input_updated_by
   );
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_pending_payment_proofs(input_data JSONB)
+RETURNS JSONB
+AS $$
+DECLARE
+  input_page INTEGER := (input_data->>'page')::INTEGER;
+  input_records_per_page INTEGER := (input_data->>'recordsPerPage')::INTEGER;
+
+  var_start INTEGER;
+  var_total INTEGER;
+  
+  return_data JSONB;
+BEGIN
+  var_start := (input_page - 1) * input_records_per_page;
+
+  SELECT COUNT(*)
+  INTO var_total
+  FROM order_payment_table
+  INNER JOIN order_table
+    ON order_id = order_payment_order_id
+  WHERE
+    order_payment_request_status = 'PENDING'
+    AND order_is_disabled = FALSE
+    AND NOT EXISTS (
+      SELECT 1 FROM order_item_table
+      WHERE order_item_order_id = order_id
+        AND order_item_is_disabled = TRUE
+    );
+
+  SELECT JSONB_BUILD_OBJECT(
+    'records', COALESCE(JSONB_AGG(ROW_TO_JSON(record_data)), '[]'::JSONB),
+    'totalRecords', var_total
+  )
+  INTO return_data
+  FROM (
+    SELECT
+      order_payment_table.*,
+      ROW_TO_JSON(attachment_table) AS order_payment_proof_attachment,
+      ROW_TO_JSON(payment_channel_table) AS order_payment_payment_channel,
+      TO_JSONB(order_table) || JSONB_BUILD_OBJECT(
+        'order_user', ROW_TO_JSON(user_table),
+        'order_total', COALESCE(
+          (
+            SELECT SUM(order_item_price * order_item_quantity)
+            FROM order_item_table
+            WHERE order_item_order_id = order_table.order_id
+              AND order_item_is_disabled = FALSE
+          ),
+          0
+        )
+      ) AS order_payment_order
+    FROM order_payment_table
+    INNER JOIN attachment_table
+      ON attachment_id = order_payment_proof_attachment_id
+    INNER JOIN payment_channel_table
+      ON payment_channel_id = order_payment_payment_channel_id
+    INNER JOIN order_table
+      ON order_id = order_payment_order_id
+    INNER JOIN user_table
+      ON user_id = order_user_id
+    WHERE
+      order_payment_request_status = 'PENDING'
+      AND order_is_disabled = FALSE
+      AND NOT EXISTS (
+        SELECT 1 FROM order_item_table
+        WHERE order_item_order_id = order_id
+          AND order_item_is_disabled = TRUE
+      )
+    ORDER BY order_payment_date_created ASC
+    LIMIT input_records_per_page
+    OFFSET var_start
+  ) record_data;
+
+  RETURN return_data;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_order_paid_total(input_data JSONB)
+RETURNS NUMERIC
+AS $$
+DECLARE
+  input_order_id UUID := (input_data->>'orderId')::UUID;
+
+  var_paid_price NUMERIC;
+  var_down_payment NUMERIC;
+
+  return_data NUMERIC;
+BEGIN
+  SELECT COALESCE(SUM(order_payment_amount), 0)
+  INTO var_paid_price
+  FROM order_payment_table
+  WHERE order_payment_order_id = input_order_id
+    AND order_payment_request_status = 'APPROVED';
+  
+  SELECT COALESCE(order_down_payment_amount - order_down_payment_fee, 0)
+  INTO var_down_payment
+  FROM order_table
+  WHERE order_id = input_order_id;
+
+  return_data = var_paid_price + var_down_payment;
+  RETURN return_data;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION reject_payment_proof(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_order_payment_id UUID := (input_data->>'orderPaymentId')::UUID;
+  input_reason TEXT := input_data->>'reason';
+  input_processed_by_user_id UUID := (input_data->>'processedByUserId')::UUID;
+BEGIN
+  UPDATE order_payment_table
+  SET
+    order_payment_request_status = 'REJECTED',
+    order_payment_rejection_reason = input_reason,
+    order_payment_amount = NULL,
+    order_payment_transaction_id = NULL,
+    order_payment_processed_by_admin_user_id = input_processed_by_user_id,
+    order_payment_date_updated = NOW()
+  WHERE order_payment_id = input_order_payment_id
+    AND order_payment_request_status = 'PENDING';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION approve_payment_proof(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_order_payment_id UUID := (input_data->>'orderPaymentId')::UUID;
+  input_transaction_id TEXT := input_data->>'transactionId';
+  input_amount NUMERIC := (input_data->>'amount')::NUMERIC;
+  input_processed_by_user_id UUID := (input_data->>'processedByUserId')::UUID;
+
+  var_order_id UUID;
+  var_order_total NUMERIC;
+  var_paid_down_payment NUMERIC;
+  var_approved_payment_total NUMERIC;
+  var_paid_total NUMERIC;
+  var_next_status order_payment_status;
+BEGIN
+  -- Approve the payment proof
+  UPDATE order_payment_table
+  SET
+    order_payment_request_status = 'APPROVED',
+    order_payment_transaction_id = input_transaction_id,
+    order_payment_amount = input_amount,
+    order_payment_rejection_reason = NULL,
+    order_payment_processed_by_admin_user_id = input_processed_by_user_id,
+    order_payment_date_updated = NOW()
+  WHERE order_payment_id = input_order_payment_id
+    AND order_payment_request_status = 'PENDING'
+  RETURNING order_payment_order_id INTO var_order_id;
+
+  IF NOT FOUND THEN
+    RETURN;
+  END IF;
+
+  -- Compute order total from active items
+  SELECT COALESCE(SUM(order_item_magic_collar_price * order_item_quantity), 0)
+  INTO var_order_total
+  FROM order_item_table
+  WHERE order_item_order_id = var_order_id
+    AND order_item_is_disabled = false;
+
+  -- Compute paid down payment
+  SELECT COALESCE(order_down_payment_amount - order_down_payment_fee, 0)
+  INTO var_paid_down_payment
+  FROM order_table
+  WHERE order_id = var_order_id;
+
+  -- Compute total approved payments
+  SELECT COALESCE(SUM(order_payment_amount), 0)
+  INTO var_approved_payment_total
+  FROM order_payment_table
+  WHERE order_payment_order_id = var_order_id
+    AND order_payment_request_status = 'APPROVED';
+
+  var_paid_total := var_paid_down_payment + var_approved_payment_total;
+
+  -- Determine next payment status
+  IF var_paid_total >= var_order_total THEN
+    var_next_status := 'PAID';
+  ELSIF var_paid_total > 0 THEN
+    var_next_status := 'PARTIALLY_PAID';
+  ELSE
+    var_next_status := 'PENDING';
+  END IF;
+
+  -- Update order payment status
+  UPDATE order_table
+  SET
+    order_payment_status = var_next_status,
+    order_date_updated = NOW()
+  WHERE order_id = var_order_id;
 END;
 $$ LANGUAGE plpgsql;

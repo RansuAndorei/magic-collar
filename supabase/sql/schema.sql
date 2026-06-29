@@ -109,7 +109,7 @@ CREATE TABLE user_table(
   user_first_name TEXT NOT NULL,
   user_last_name TEXT NOT NULL,
   user_email TEXT UNIQUE NOT NULL,
-  user_is_disabled BOOLEAN DEFAULT FALSE NOT NULL,
+  user_is_disabled BOOLEAN DEFAULT false NOT NULL,
   user_phone_number TEXT NOT NULL,
   user_avatar TEXT,
   user_role user_role DEFAULT 'CUSTOMER' NOT NULL,
@@ -147,7 +147,7 @@ CREATE TABLE address_table(
 CREATE TABLE delivery_detail_table(
   delivery_detail_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY NOT NULL,
   delivery_detail_date_created TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  delivery_detail_is_disabled BOOLEAN DEFAULT FALSE NOT NULL,
+  delivery_detail_is_disabled BOOLEAN DEFAULT false NOT NULL,
   delivery_detail_full_name TEXT NOT NULL,
   delivery_detail_phone_number TEXT NOT NULL,
   delivery_detail_is_default BOOLEAN NOT NULL,
@@ -279,12 +279,15 @@ CREATE TABLE car_table(
 CREATE TABLE pickup_address_table(
   pickup_address_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY NOT NULL,
   pickup_address_date_created TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  pickup_address_is_disabled BOOLEAN DEFAULT FALSE NOT NULL,
-  pickup_address_is_default BOOLEAN NOT NULL,
+  pickup_address_date_updated TIMESTAMPTZ,
+  pickup_address_is_disabled BOOLEAN DEFAULT false NOT NULL,
+  pickup_address_is_available BOOLEAN DEFAULT true NOT NULL,
   pickup_address_longitude NUMERIC(9, 6) NOT NULL,
   pickup_address_latitude NUMERIC(9, 6) NOT NULL,
 
-  pickup_address_address_id UUID REFERENCES address_table(address_id) NOT NULL
+  pickup_address_address_id UUID REFERENCES address_table(address_id) NOT NULL,
+  pickup_address_created_by_admin_user_id UUID REFERENCES user_table(user_id) NOT NULL,
+  pickup_address_updated_by_admin_user_id UUID REFERENCES user_table(user_id),
 );
 
 CREATE TABLE batch_table(
@@ -317,6 +320,7 @@ CREATE TABLE order_table(
 
   order_fulfillment order_fulfillment NOT NULL,
 
+  order_delivery_courier TEXT,
   order_delivery_detail_full_name TEXT NOT NULL,
   order_delivery_detail_phone_number TEXT NOT NULL,
 
@@ -326,6 +330,8 @@ CREATE TABLE order_table(
   order_address_barangay TEXT NOT NULL,
   order_address_street TEXT NOT NULL,
   order_address_postal_code TEXT NOT NULL,
+  order_address_longitude NUMERIC(9, 6) ,
+  order_address_latitude NUMERIC(9, 6) ,
 
   order_down_payment_amount NUMERIC(10, 2) NOT NULL,
   order_down_payment_fee NUMERIC(10, 2) NOT NULL,
@@ -424,7 +430,9 @@ CREATE TABLE system_setting_table(
   system_setting_date_created TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   system_setting_date_updated TIMESTAMPTZ,
   system_setting_key settings NOT NULL,
-  system_setting_value TEXT NOT NULL
+  system_setting_value TEXT NOT NULL,
+  
+  system_setting_updated_by_admin_user_id UUID REFERENCES user_table(user_id)
 );
 
 CREATE TABLE payment_channel_table(
@@ -437,7 +445,9 @@ CREATE TABLE payment_channel_table(
   payment_channel_account_name TEXT NOT NULL,
   payment_channel_account_identifier TEXT NOT NULL,
   
-  payment_channel_qr_code_attachment_id UUID REFERENCES attachment_table(attachment_id) NOT NULL
+  payment_channel_qr_code_attachment_id UUID REFERENCES attachment_table(attachment_id) NOT NULL,
+  payment_channel_created_by_admin_user_id UUID REFERENCES user_table(user_id) NOT NULL,
+  payment_channel_updated_by_admin_user_id UUID REFERENCES user_table(user_id)
 );
 
 CREATE TABLE order_payment_table(
@@ -452,7 +462,19 @@ CREATE TABLE order_payment_table(
   order_payment_proof_attachment_id UUID REFERENCES attachment_table(attachment_id) NOT NULL,
   order_payment_payment_channel_id UUID REFERENCES payment_channel_table(payment_channel_id) NOT NULL,
   order_payment_order_id UUID REFERENCES order_table(order_id) NOT NULL,
-  order_payment_processed_by_user_id UUID REFERENCES user_table(user_id)
+  order_payment_processed_by_admin_user_id UUID REFERENCES user_table(user_id)
+);
+
+CREATE TABLE courier_table(
+  courier_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY NOT NULL,
+  courier_date_created TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  courier_date_updated TIMESTAMPTZ,
+  courier_is_disabled BOOLEAN DEFAULT false NOT NULL,
+  courier_is_active BOOLEAN DEFAULT true NOT NULL,
+  courier_name TEXT NOT NULL,
+
+  courier_created_by_admin_user_id UUID REFERENCES user_table(user_id) NOT NULL,
+  courier_updated_by_admin_user_id UUID REFERENCES user_table(user_id)
 );
 
 GRANT ALL ON ALL TABLES IN SCHEMA public TO PUBLIC;

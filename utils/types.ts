@@ -188,7 +188,7 @@ export type StatusMetadata<TStatus extends string> = Record<
   {
     color: string;
     description: string;
-    icon:Icon
+    icon: Icon;
   }
 >;
 
@@ -232,6 +232,15 @@ export type AdminOrder = OrderTableRow & {
   order_user: UserTableRow;
   order_item_count: number;
   order_total: number;
+};
+
+export type AdminPaymentProof = OrderPaymentTableRow & {
+  order_payment_proof_attachment: AttachmentTableRow;
+  order_payment_payment_channel: PaymentChannelTableRow;
+  order_payment_order: OrderTableRow & {
+    order_user: UserTableRow;
+    order_total: number;
+  };
 };
 
 export type AdminBatchSortAccessor = "batch_date_created" | "batch_number" | "batch_status";

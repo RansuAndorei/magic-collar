@@ -47,7 +47,7 @@ import {
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { IconMaximize, IconPackage, IconSearch } from "@tabler/icons-react";
+import { IconMaximize, IconSearch, IconShoppingBag } from "@tabler/icons-react";
 import { DataTableColumn } from "mantine-datatable";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -292,7 +292,7 @@ const AdminOrdersPage = () => {
           <Box>
             <Group gap="xs">
               <ThemeIcon color="red" variant="light" radius="md">
-                <IconPackage size={18} />
+                <IconShoppingBag size={18} />
               </ThemeIcon>
               <Title order={2} size="h3">
                 Order List

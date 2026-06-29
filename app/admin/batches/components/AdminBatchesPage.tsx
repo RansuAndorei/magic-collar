@@ -41,7 +41,7 @@ import {
 import { useDebouncedValue } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
-import { IconMaximize, IconSearch, IconTruckLoading } from "@tabler/icons-react";
+import { IconClipboardList, IconMaximize, IconSearch } from "@tabler/icons-react";
 import { DataTableColumn } from "mantine-datatable";
 import moment from "moment";
 import { usePathname, useRouter } from "next/navigation";
@@ -344,7 +344,7 @@ const AdminBatchesPage = ({ batchLimit }: Props) => {
           <Box>
             <Group gap="xs">
               <ThemeIcon color="red" variant="light" radius="md">
-                <IconTruckLoading size={18} />
+                <IconClipboardList size={18} />
               </ThemeIcon>
               <Title order={2} size="h3">
                 Batch List

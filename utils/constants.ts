@@ -480,7 +480,12 @@ export const ADMIN_NAV_GROUP = [
         meta: "List of orders and items",
         href: "/admin/orders",
       },
-      { label: "Payment Proofs", icon: IconPhotoScan, meta: "Approve or reject uploads" },
+      {
+        label: "Payment Proofs",
+        icon: IconPhotoScan,
+        meta: "Approve or reject uploads",
+        href: "/admin/payment-proofs",
+      },
       {
         label: "Batches",
         icon: IconClipboardList,
@@ -513,3 +518,16 @@ export const BATCH_NEXT_STATUS: Partial<Record<BatchStatusEnum, BatchStatusEnum>
   ENROUTE: "CUSTOMS CLEARANCE",
   "CUSTOMS CLEARANCE": "READY FOR SHIPPING",
 };
+
+export const REASON_FOR_REJECTION_OPTION = [
+  "Blurry or unreadable receipt",
+  "Receipt is cropped or incomplete",
+  "Important details are missing",
+  "Reference number does not match our records",
+  "Incorrect payment recipient/account",
+  "Duplicate payment proof submitted",
+  "Wrong receipt uploaded",
+  "Screenshot is not a payment confirmation",
+  "Payment could not be verified",
+  "Other",
+];

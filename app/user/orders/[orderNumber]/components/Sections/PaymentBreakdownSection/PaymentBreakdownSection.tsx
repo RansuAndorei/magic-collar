@@ -16,17 +16,10 @@ import UploadPayment from "./UploadPayment";
 type Props = {
   order: OrderWithOrderItemType;
   paymentChannelList: PaymentChannelType[];
-  totals: {
-    pendingPaymentTotal: number;
-    approvedPaymentTotal: number;
-  };
+  approvedPaymentTotal: number;
 };
 
-const PaymentBreakdownSection = ({
-  order,
-  paymentChannelList,
-  totals: { pendingPaymentTotal, approvedPaymentTotal },
-}: Props) => {
+const PaymentBreakdownSection = ({ order, paymentChannelList, approvedPaymentTotal }: Props) => {
   const pathname = usePathname();
   const userData = useUserData();
 
@@ -156,11 +149,6 @@ const PaymentBreakdownSection = ({
             <Text fw={800} c="green">
               {formatCurrency(approvedPaymentTotal, { minimumFractionDigits: 0 })}
             </Text>
-            {pendingPaymentTotal > 0 ? (
-              <Text size="xs" c="dimmed">
-                {formatCurrency(pendingPaymentTotal, { minimumFractionDigits: 0 })} pending
-              </Text>
-            ) : null}
           </Card>
           <Card withBorder p="md">
             <Text size="xs" c="dimmed" tt="uppercase" fw={700}>

@@ -77,10 +77,7 @@ export const getOrderPaymentTotals = async (
     input_data: params,
   });
   if (error) throw error;
-  return data as {
-    pendingPaymentTotal: number;
-    approvedPaymentTotal: number;
-  };
+  return data;
 };
 
 export const getOrderPayment = async (

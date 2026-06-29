@@ -25,7 +25,7 @@ const Page = async ({ params }: Props) => {
   if (!user) redirect("/sign-in");
 
   try {
-    const [order, paymentChannelList, totals] = await Promise.all([
+    const [order, paymentChannelList, approvedPaymentTotal] = await Promise.all([
       getCustomerOrder(supabaseClient, {
         userId: user.id,
         orderNumber,
@@ -36,7 +36,11 @@ const Page = async ({ params }: Props) => {
     if (!order) redirect("/error/404");
 
     return (
-      <OrderDetailPage order={order} paymentChannelList={paymentChannelList} totals={totals} />
+      <OrderDetailPage
+        order={order}
+        paymentChannelList={paymentChannelList}
+       approvedPaymentTotal={approvedPaymentTotal}
+      />
     );
   } catch (e) {
     if (isAppError(e)) {

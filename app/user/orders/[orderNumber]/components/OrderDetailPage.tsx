@@ -11,13 +11,10 @@ import StatusSection from "./Sections/StatusSection";
 type Props = {
   order: OrderWithOrderItemType;
   paymentChannelList: PaymentChannelType[];
-  totals: {
-    pendingPaymentTotal: number;
-    approvedPaymentTotal: number;
-  };
+  approvedPaymentTotal: number;
 };
 
-const OrderDetailPage = ({ order, paymentChannelList, totals }: Props) => {
+const OrderDetailPage = ({ order, paymentChannelList, approvedPaymentTotal }: Props) => {
   return (
     <Box py={{ base: rem(32), md: rem(56) }}>
       <Container size="lg">
@@ -42,7 +39,7 @@ const OrderDetailPage = ({ order, paymentChannelList, totals }: Props) => {
           <PaymentBreakdownSection
             order={order}
             paymentChannelList={paymentChannelList}
-            totals={totals}
+            approvedPaymentTotal={approvedPaymentTotal}
           />
         </Stack>
       </Container>
