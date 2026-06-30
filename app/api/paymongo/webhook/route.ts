@@ -62,7 +62,6 @@ export async function POST(req: Request) {
       orderData,
       description,
       userId,
-      userEmail,
       totalAmount,
       currency,
       checkoutId,
@@ -102,7 +101,6 @@ export async function POST(req: Request) {
     return new NextResponse("OK", { status: 200 });
   } catch (e) {
     const supabaseClient = await createSupabaseServiceRoleClient();
-
     if (isAppError(e)) {
       await insertError(supabaseClient, {
         errorTableInsert: {

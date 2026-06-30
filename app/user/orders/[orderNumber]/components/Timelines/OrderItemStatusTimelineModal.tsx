@@ -9,7 +9,8 @@ import { Box, Collapse, Group, Loader, Modal, Text, Timeline, UnstyledButton } f
 import { IconChevronDown, IconChevronRight, IconHistory } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { fetchOrderItemTimeline } from "../../actions";
-import StatusBadge from "../StatusBadge";
+
+import StatusBadge from "../../../components/StatusBadge";
 import BatchSubTimeline from "./BatchSubTimeline";
 
 type Props = {

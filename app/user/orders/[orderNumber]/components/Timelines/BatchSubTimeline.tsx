@@ -4,7 +4,7 @@ import { formatDate, getBatchStatusColor, getBatchStatusDescription } from "@/ut
 
 import { BatchStatusLogTableRow } from "@/utils/types";
 import { Text, Timeline } from "@mantine/core";
-import StatusBadge from "../StatusBadge";
+import StatusBadge from "../../../components/StatusBadge";
 
 const BatchSubTimeline = ({ logs }: { logs: BatchStatusLogTableRow[] }) => {
   if (logs.length === 0) {

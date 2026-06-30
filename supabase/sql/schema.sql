@@ -32,18 +32,20 @@ CREATE TYPE batch_status AS ENUM(
   'CANCELLED'
 );
 
-CREATE TYPE order_status AS ENUM(
+CREATE TYPE order_status AS ENUM (
   'PENDING',
   'FOR DELIVERY',
+  'READY FOR PICKUP',
   'DELIVERED',
   'FORFEITED',
   'CANCELLED'
 );
 
-CREATE TYPE order_item_status AS ENUM(
+CREATE TYPE order_item_status AS ENUM (
   'PENDING',
   'IN STOCK',
   'FOR DELIVERY',
+  'READY FOR PICKUP',
   'DELIVERED',
   'FORFEITED',
   'CANCELLED'
@@ -68,8 +70,13 @@ CREATE TYPE payment_description AS ENUM(
 
 CREATE TYPE settings AS ENUM (
   'BATCH_LIMIT',
-  'CONTACT_NUMBER',
-  'EMAIL'
+  'EMAIL',
+  'PHONE_NUMBER',
+  'MESSENGER',
+  'FACEBOOK',
+  'TIKTOK',
+  'YOUTUBE',
+  'INSTAGRAM'
 );
 
 CREATE TYPE order_payment_status AS ENUM (
@@ -287,7 +294,7 @@ CREATE TABLE pickup_address_table(
 
   pickup_address_address_id UUID REFERENCES address_table(address_id) NOT NULL,
   pickup_address_created_by_admin_user_id UUID REFERENCES user_table(user_id) NOT NULL,
-  pickup_address_updated_by_admin_user_id UUID REFERENCES user_table(user_id),
+  pickup_address_updated_by_admin_user_id UUID REFERENCES user_table(user_id)
 );
 
 CREATE TABLE batch_table(
@@ -321,8 +328,8 @@ CREATE TABLE order_table(
   order_fulfillment order_fulfillment NOT NULL,
 
   order_delivery_courier TEXT,
-  order_delivery_detail_full_name TEXT NOT NULL,
-  order_delivery_detail_phone_number TEXT NOT NULL,
+  order_delivery_detail_full_name TEXT,
+  order_delivery_detail_phone_number TEXT,
 
   order_address_region TEXT NOT NULL,
   order_address_province TEXT NOT NULL,
@@ -330,8 +337,8 @@ CREATE TABLE order_table(
   order_address_barangay TEXT NOT NULL,
   order_address_street TEXT NOT NULL,
   order_address_postal_code TEXT NOT NULL,
-  order_address_longitude NUMERIC(9, 6) ,
-  order_address_latitude NUMERIC(9, 6) ,
+  order_address_longitude NUMERIC(9, 6),
+  order_address_latitude NUMERIC(9, 6),
 
   order_down_payment_amount NUMERIC(10, 2) NOT NULL,
   order_down_payment_fee NUMERIC(10, 2) NOT NULL,
@@ -358,7 +365,7 @@ CREATE TABLE order_item_table(
   order_item_quantity INT NOT NULL,
   order_item_price NUMERIC(10, 2) NOT NULL,
 
-  order_item_car_model_code TEXT NOT NULL,
+  order_item_car_model_code TEXT,
   order_item_car_model_year_start INT NOT NULL,
   order_item_car_model_year_end INT,
   order_item_car_make TEXT NOT NULL,

@@ -97,7 +97,7 @@ export async function POST(req: Request) {
                 name: "Processing Fee",
                 description: `${paymentMethod.toUpperCase()} processing fee applied to the total amount of ${formatCurrency(total, { currency })}`,
                 quantity: 1,
-                amount: transferFee * 100,
+                amount: Math.round(transferFee * 100),
                 currency,
                 images: [`${process.env.NEXT_PUBLIC_SITE_URL}/images/payment/${paymentMethod}.jpg`],
               },

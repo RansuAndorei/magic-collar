@@ -3,6 +3,7 @@
 import { insertError } from "@/app/actions";
 import { useUserData } from "@/stores/useUserStore";
 import {
+  FULFILLMENT_OPTIONS,
   ORDER_PAGE_SIZE,
   ORDER_PREFERENCES_STORAGE_KEY,
   ORDER_STATUS_OPTIONS,
@@ -10,7 +11,12 @@ import {
 } from "@/utils/constants";
 import { isAppError } from "@/utils/functions";
 import { supabaseClient } from "@/utils/supabase/client";
-import { OrderPaymentStatusEnum, OrderStatusEnum, OrderWithOrderItemType } from "@/utils/types";
+import {
+  OrderFulfillmentEnum,
+  OrderPaymentStatusEnum,
+  OrderStatusEnum,
+  OrderWithOrderItemType,
+} from "@/utils/types";
 import {
   Box,
   Container,
@@ -37,16 +43,19 @@ type OrderPreferences = {
   search: string;
   orderStatus: OrderStatusEnum | "ALL";
   paymentStatus: OrderPaymentStatusEnum | "ALL";
+  fulfillment: OrderFulfillmentEnum | "ALL";
 };
 
 const DEFAULT_PREFERENCES: OrderPreferences = {
   search: "",
   orderStatus: "ALL",
   paymentStatus: "ALL",
+  fulfillment: "ALL",
 };
 
 const ORDER_STATUS_VALUES = new Set(ORDER_STATUS_OPTIONS.map(({ value }) => value));
 const PAYMENT_STATUS_VALUES = new Set(PAYMENT_STATUS_OPTIONS.map(({ value }) => value));
+const FULFILLMENT_STATUS_VALUES = new Set(FULFILLMENT_OPTIONS.map(({ value }) => value));
 
 const parseStoredPreferences = (value: string | null): OrderPreferences => {
   if (!value) return DEFAULT_PREFERENCES;
@@ -63,6 +72,10 @@ const parseStoredPreferences = (value: string | null): OrderPreferences => {
         typeof parsed.paymentStatus === "string" && PAYMENT_STATUS_VALUES.has(parsed.paymentStatus)
           ? (parsed.paymentStatus as OrderPaymentStatusEnum | "ALL")
           : DEFAULT_PREFERENCES.paymentStatus,
+      fulfillment:
+        typeof parsed.fulfillment === "string" && FULFILLMENT_STATUS_VALUES.has(parsed.fulfillment)
+          ? (parsed.fulfillment as OrderFulfillmentEnum | "ALL")
+          : DEFAULT_PREFERENCES.fulfillment,
     };
   } catch {
     return DEFAULT_PREFERENCES;
@@ -80,6 +93,7 @@ const OrderListPage = () => {
   const [debouncedSearch] = useDebouncedValue(search, 300);
   const [orderStatus, setOrderStatus] = useState<OrderStatusEnum | "ALL">("ALL");
   const [paymentStatus, setPaymentStatus] = useState<OrderPaymentStatusEnum | "ALL">("ALL");
+  const [fulfillment, setFulfillment] = useState<OrderFulfillmentEnum | "ALL">("ALL");
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [hasLoadedPreferences, setHasLoadedPreferences] = useState(false);
@@ -96,6 +110,7 @@ const OrderListPage = () => {
     setSearch(preferences.search);
     setOrderStatus(preferences.orderStatus);
     setPaymentStatus(preferences.paymentStatus);
+    setFulfillment(preferences.fulfillment);
     setHasLoadedPreferences(true);
   }, []);
 
@@ -104,9 +119,9 @@ const OrderListPage = () => {
 
     window.localStorage.setItem(
       ORDER_PREFERENCES_STORAGE_KEY,
-      JSON.stringify({ search, orderStatus, paymentStatus }),
+      JSON.stringify({ search, orderStatus, paymentStatus, fulfillment }),
     );
-  }, [hasLoadedPreferences, orderStatus, paymentStatus, search]);
+  }, [hasLoadedPreferences, orderStatus, paymentStatus, fulfillment, search]);
 
   const fetchOrderList = useCallback(async () => {
     if (!hasLoadedPreferences || !userData) return;
@@ -121,6 +136,7 @@ const OrderListPage = () => {
         search: debouncedSearch.trim(),
         orderStatus,
         paymentStatus,
+        fulfillment,
       });
 
       setOrderList(response?.orders ?? []);
@@ -144,7 +160,15 @@ const OrderListPage = () => {
     } finally {
       setIsFetching(false);
     }
-  }, [debouncedSearch, hasLoadedPreferences, orderStatus, page, paymentStatus, userData]);
+  }, [
+    debouncedSearch,
+    hasLoadedPreferences,
+    orderStatus,
+    page,
+    paymentStatus,
+    fulfillment,
+    userData,
+  ]);
 
   useEffect(() => {
     fetchOrderList();
@@ -202,6 +226,8 @@ const OrderListPage = () => {
             setOrderStatus={setOrderStatus}
             paymentStatus={paymentStatus}
             setPaymentStatus={setPaymentStatus}
+            fulfillment={fulfillment}
+            setFulfillment={setFulfillment}
           />
 
           <Text size="sm" c="dimmed">

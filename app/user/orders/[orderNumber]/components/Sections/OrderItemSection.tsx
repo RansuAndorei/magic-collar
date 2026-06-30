@@ -13,7 +13,7 @@ import { Badge, Box, Card, Group, rem, Stack, Text, UnstyledButton } from "@mant
 import { IconBox, IconChevronDown, IconHistory } from "@tabler/icons-react";
 import Image from "next/image";
 import { useState } from "react";
-import StatusBadge from "../StatusBadge";
+import StatusBadge from "../../../components/StatusBadge";
 import OrderItemStatusTimelineModal from "../Timelines/OrderItemStatusTimelineModal";
 
 type Props = {

@@ -1,5 +1,10 @@
 import { Database } from "@/utils/database";
-import { OrderPaymentStatusEnum, OrderStatusEnum, OrderWithOrderItemType } from "@/utils/types";
+import {
+  OrderFulfillmentEnum,
+  OrderPaymentStatusEnum,
+  OrderStatusEnum,
+  OrderWithOrderItemType,
+} from "@/utils/types";
 import { SupabaseClient } from "@supabase/supabase-js";
 
 export const getCustomerOrderList = async (
@@ -11,6 +16,7 @@ export const getCustomerOrderList = async (
     search: string;
     orderStatus: OrderStatusEnum | "ALL";
     paymentStatus: OrderPaymentStatusEnum | "ALL";
+    fulfillment: OrderFulfillmentEnum | "ALL";
   },
 ) => {
   const { data, error } = await supabaseClient.rpc("get_customer_order_list", {

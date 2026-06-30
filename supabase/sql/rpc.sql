@@ -197,6 +197,7 @@ DECLARE
   input_search TEXT := NULLIF(TRIM(COALESCE(input_data->>'search', '')), '');
   input_order_status TEXT := COALESCE(input_data->>'orderStatus', 'ALL');
   input_payment_status TEXT := COALESCE(input_data->>'paymentStatus', 'ALL');
+  input_fulfillment TEXT := COALESCE(input_data->>'fulfillment', 'ALL');
 
   var_total_count INT := 0;
   var_orders JSONB := '[]'::JSONB;
@@ -219,6 +220,10 @@ BEGIN
       AND (
         input_payment_status = 'ALL'
         OR order_payment_status = input_payment_status::order_payment_status
+      )
+      AND (
+        input_fulfillment = 'ALL'
+        OR order_fulfillment = input_fulfillment::order_fulfillment
       )
       AND EXISTS (
         SELECT 1
@@ -308,7 +313,7 @@ DECLARE
   var_batch_limit INT := 0;
   var_current_batch_limit INT := 0;
   var_current_batch_id UUID;
-  var_current_batch_delivery_details JSONB;
+  var_current_batch_address_details JSONB;
   var_order_items JSONB;
   var_remaining_items JSONB;
   var_updated_items JSONB;
@@ -388,27 +393,52 @@ BEGIN
   INTO var_down_payment_fee, var_down_payment_amount
   FROM calculate_fee(var_total_down_payment, input_payment_fee_percentage);
 
-  -- fetch delivery details
-  SELECT JSONB_BUILD_OBJECT(
-    'delivery_detail_full_name', delivery_detail_full_name,
-    'delivery_detail_phone_number', delivery_detail_phone_number,
-    'address_region', address_region,
-    'address_province', address_province,
-    'address_city', address_city,
-    'address_barangay', address_barangay,
-    'address_street', address_street,
-    'address_postal_code', address_postal_code
-  )
-  INTO var_current_batch_delivery_details
-  FROM delivery_detail_table
-  INNER JOIN address_table ON address_id = delivery_detail_address_id
-  WHERE delivery_detail_id = (input_order_data->>'selectedAddressId')::UUID;
+  IF input_order_data->>'fulfillmentType' = 'DELIVERY' THEN
+    -- fetch delivery details
+    SELECT JSONB_BUILD_OBJECT(
+      'delivery_detail_full_name', delivery_detail_full_name,
+      'delivery_detail_phone_number', delivery_detail_phone_number,
+      'address_longitude', NULL,
+      'address_latitude', NULL,
+      'address_region', address_region,
+      'address_province', address_province,
+      'address_city', address_city,
+      'address_barangay', address_barangay,
+      'address_street', address_street,
+      'address_postal_code', address_postal_code
+    )
+    INTO var_current_batch_address_details
+    FROM delivery_detail_table
+    INNER JOIN address_table ON address_id = delivery_detail_address_id
+    WHERE delivery_detail_id = (input_order_data->>'selectedAddressId')::UUID;
+  ELSIF input_order_data->>'fulfillmentType' = 'PICKUP' THEN
+    -- fetch pickup details
+    SELECT JSONB_BUILD_OBJECT(
+      'delivery_detail_full_name', NULL,
+      'delivery_detail_phone_number', NULL,
+      'address_longitude', pickup_address_longitude,
+      'address_latitude', pickup_address_latitude,
+      'address_region', address_region,
+      'address_province', address_province,
+      'address_city', address_city,
+      'address_barangay', address_barangay,
+      'address_street', address_street,
+      'address_postal_code', address_postal_code
+    )
+    INTO var_current_batch_address_details
+    FROM pickup_address_table
+    INNER JOIN address_table ON address_id = pickup_address_address_id
+    WHERE pickup_address_id = (input_order_data->>'selectedAddressId')::UUID;
+  END IF;
 
   -- insert order
   INSERT INTO order_table (
     order_fulfillment,
+    order_delivery_courier,
     order_delivery_detail_full_name,
     order_delivery_detail_phone_number,
+    order_address_longitude,
+    order_address_latitude,
     order_address_region,
     order_address_province,
     order_address_city,
@@ -420,14 +450,17 @@ BEGIN
     order_user_id
   ) VALUES (
     (input_order_data->>'fulfillmentType')::order_fulfillment,
-    var_current_batch_delivery_details->>'delivery_detail_full_name',
-    var_current_batch_delivery_details->>'delivery_detail_phone_number',
-    var_current_batch_delivery_details->>'address_region',
-    var_current_batch_delivery_details->>'address_province',
-    var_current_batch_delivery_details->>'address_city',
-    var_current_batch_delivery_details->>'address_barangay',
-    var_current_batch_delivery_details->>'address_street',
-    var_current_batch_delivery_details->>'address_postal_code',
+    input_order_data->>'courier',
+    var_current_batch_address_details->>'delivery_detail_full_name',
+    var_current_batch_address_details->>'delivery_detail_phone_number',
+    (var_current_batch_address_details->>'address_longitude')::NUMERIC,
+    (var_current_batch_address_details->>'address_latitude')::NUMERIC,
+    var_current_batch_address_details->>'address_region',
+    var_current_batch_address_details->>'address_province',
+    var_current_batch_address_details->>'address_city',
+    var_current_batch_address_details->>'address_barangay',
+    var_current_batch_address_details->>'address_street',
+    var_current_batch_address_details->>'address_postal_code',
     var_down_payment_amount,
     var_down_payment_fee,
     input_user_id

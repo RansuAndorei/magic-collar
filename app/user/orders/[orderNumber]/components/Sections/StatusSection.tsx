@@ -8,10 +8,11 @@ import {
   getPaymentStatusDescription,
 } from "@/utils/functions";
 import { OrderWithOrderItemType } from "@/utils/types";
-import { Card, SimpleGrid, Stack, Text, UnstyledButton } from "@mantine/core";
+import { Badge, Card, SimpleGrid, Stack, Text, UnstyledButton } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconHistory } from "@tabler/icons-react";
-import StatusBadge from "../StatusBadge";
+import { IconHistory, IconPackage, IconTruckDelivery } from "@tabler/icons-react";
+
+import StatusBadge from "../../../components/StatusBadge";
 import OrderStatusTimelineModal from "../Timelines/OrderStatusTimelineModal ";
 
 type Props = {
@@ -68,7 +69,19 @@ const StatusSection = ({ order }: Props) => {
             <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
               Fulfillment
             </Text>
-            <Text fw={700}>{order.order_fulfillment}</Text>
+            <Badge
+              variant="light"
+              color={order.order_fulfillment === "PICKUP" ? "blue" : "teal"}
+              leftSection={
+                order.order_fulfillment === "PICKUP" ? (
+                  <IconPackage size={12} />
+                ) : (
+                  <IconTruckDelivery size={12} />
+                )
+              }
+            >
+              {order.order_fulfillment === "PICKUP" ? "Pickup" : "Delivery"}
+            </Badge>
             <Text size="sm" c="dimmed">
               {order.order_delivery_detail_full_name}
             </Text>
@@ -86,7 +99,6 @@ const StatusSection = ({ order }: Props) => {
           </Stack>
         </Card>
       </SimpleGrid>
-
       <OrderStatusTimelineModal
         orderId={order.order_id}
         opened={timelineOpen}

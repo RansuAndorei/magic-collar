@@ -16,12 +16,14 @@ import {
   IconMessageCircle,
   IconPackage,
   IconPackageExport,
+  IconPackages,
   IconPhone,
   IconPhotoScan,
   IconSettings2,
   IconShieldCheck,
   IconShip,
   IconShoppingBag,
+  IconShoppingBagCheck,
   IconShoppingCartCheck,
   IconTag,
   IconTruck,
@@ -295,9 +297,14 @@ export const ORDER_STATUS_METADATA: StatusMetadata<OrderStatusEnum> = {
     description: "The order has been dispatched and is on its way to the customer.",
     icon: IconTruckDelivery,
   },
+  "READY FOR PICKUP": {
+    color: "cyan",
+    description: "The order is ready and waiting to be picked up by the customer.",
+    icon: IconPackage,
+  },
   DELIVERED: {
     color: "green",
-    description: "The order has been successfully delivered to the customer.",
+    description: "The order has been successfully delivered or picked up by the customer.",
     icon: IconCircleCheck,
   },
   FORFEITED: {
@@ -316,29 +323,34 @@ export const ORDER_STATUS_METADATA: StatusMetadata<OrderStatusEnum> = {
 export const ORDER_ITEM_STATUS_METADATA: StatusMetadata<OrderItemStatusEnum> = {
   PENDING: {
     color: "yellow",
-    description: "The order is being processed and prepared for fulfillment.",
+    description: "The item is being processed and prepared for fulfillment.",
     icon: IconClockHour4,
   },
   "IN STOCK": {
     color: "teal",
     description:
-      "The item is available in stock and reserved for this order. It is ready to proceed to delivery once all requirements, including payment, have been completed.",
-    icon: IconPackage,
+      "The item is available in stock and reserved for this order. It is ready to proceed to delivery or pickup once all requirements, including payment, have been completed.",
+    icon: IconPackages,
   },
   "FOR DELIVERY": {
     color: "blue",
-    description: "The order has been dispatched and is on its way to the customer.",
+    description: "The item has been dispatched and is on its way to the customer.",
     icon: IconTruckDelivery,
+  },
+  "READY FOR PICKUP": {
+    color: "cyan",
+    description: "The item is packed and ready to be picked up by the customer.",
+    icon: IconShoppingBagCheck,
   },
   DELIVERED: {
     color: "green",
-    description: "The order has been successfully delivered to the customer.",
+    description: "The item has been successfully delivered or picked up by the customer.",
     icon: IconCircleCheck,
   },
   FORFEITED: {
     color: "red",
     description:
-      "The order was not fully paid within the required period and has been forfeited. Any down payment made is non-refundable.",
+      "The item was not fully paid within the required period and has been forfeited. Any down payment made is non-refundable.",
     icon: IconAlertTriangle,
   },
   CANCELLED: {
@@ -347,7 +359,6 @@ export const ORDER_ITEM_STATUS_METADATA: StatusMetadata<OrderItemStatusEnum> = {
     icon: IconX,
   },
 };
-
 export const PAYMENT_STATUS_METADATA: StatusMetadata<OrderPaymentStatusEnum> = {
   PENDING: {
     color: "yellow",
@@ -414,10 +425,14 @@ export const BATCH_STATUS_METADATA: StatusMetadata<BatchStatusEnum> = {
   },
 };
 
-export const ORDER_STATUS_OPTIONS: { value: OrderStatusEnum | "ALL"; label: string }[] = [
+export const ORDER_STATUS_OPTIONS: {
+  value: OrderStatusEnum | "ALL";
+  label: string;
+}[] = [
   { value: "ALL", label: "All" },
   { value: "PENDING", label: "Pending" },
   { value: "FOR DELIVERY", label: "For Delivery" },
+  { value: "READY FOR PICKUP", label: "Ready for Pickup" },
   { value: "DELIVERED", label: "Delivered" },
   { value: "FORFEITED", label: "Forfeited" },
   { value: "CANCELLED", label: "Cancelled" },
@@ -432,7 +447,7 @@ export const PAYMENT_STATUS_OPTIONS: { value: OrderPaymentStatusEnum | "ALL"; la
 ];
 
 export const FULFILLMENT_OPTIONS = [
-  { value: "ALL", label: "All fulfillment" },
+  { value: "ALL", label: "All" },
   { value: "DELIVERY", label: "Delivery" },
   { value: "PICKUP", label: "Pickup" },
 ];

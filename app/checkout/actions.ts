@@ -12,7 +12,7 @@ export const getCheckoutAddressList = async (
     .select(
       `
         *,
-        delivery_detail_address: address_table(*)
+        delivery_detail_address: delivery_detail_address_id(*)
       `,
     )
     .eq("delivery_detail_user_id", params.userId)
@@ -23,24 +23,29 @@ export const getCheckoutAddressList = async (
   return data;
 };
 
-export const getPickupAddressList = async (
-  supabaseClient: SupabaseClient<Database>,
-  params: {
-    userId: string;
-  },
-) => {
+export const getPickupAddressList = async (supabaseClient: SupabaseClient<Database>) => {
   const { data, error } = await supabaseClient
     .from("pickup_address_table")
     .select(
       `
         *,
-        delivery_detail_address: address_table(*)
+        pickup_address: pickup_address_address_id(*)
       `,
     )
-    .eq("pickup_address_id", params.userId)
     .eq("pickup_address_is_disabled", false)
-    .order("pickup_address_is_default", { ascending: false })
+    .order("pickup_address_is_available", { ascending: false })
     .order("pickup_address_date_created", { ascending: false });
   if (error) throw error;
   return data;
+};
+
+export const getCourierList = async (supabaseClient: SupabaseClient<Database>) => {
+  const { data, error } = await supabaseClient
+    .from("courier_table")
+    .select("courier_name")
+    .eq("courier_is_active", true)
+    .eq("courier_is_disabled", false)
+    .order("courier_name", { ascending: true });
+  if (error) throw error;
+  return data.map((value) => value.courier_name);
 };

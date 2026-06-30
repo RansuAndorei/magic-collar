@@ -2,29 +2,34 @@ import { insertError } from "@/app/actions";
 import { getAllCar } from "@/app/shop/actions";
 import { isAppError } from "@/utils/functions";
 import { createSupabaseServerClient } from "@/utils/supabase/server";
-import { CarShopType, CheckoutAddressType } from "@/utils/types";
+import { CarShopType, CheckoutAddressType, PickupAddressType } from "@/utils/types";
 import { redirect } from "next/navigation";
-import { getCheckoutAddressList } from "./actions";
+import { getCheckoutAddressList, getCourierList, getPickupAddressList } from "./actions";
 import CheckoutPage from "./components/CheckoutPage";
 
 const Page = async () => {
   const supabaseClient = await createSupabaseServerClient();
 
   const carList: CarShopType[] = [];
-  const addressList: CheckoutAddressType[] = [];
-
+  const checkoutAddressList: CheckoutAddressType[] = [];
+  const pickupAddressList: PickupAddressType[] = [];
+  const courierList: string[] = [];
   try {
     const {
       data: { user },
     } = await supabaseClient.auth.getUser();
 
-    const [carData, addressData] = await Promise.all([
+    const [carData, userAddressData, pickupAddressData, courierData] = await Promise.all([
       getAllCar(supabaseClient),
       user ? getCheckoutAddressList(supabaseClient, { userId: user.id }) : Promise.resolve([]),
+      getPickupAddressList(supabaseClient),
+      getCourierList(supabaseClient),
     ]);
 
     carList.push(...carData);
-    addressList.push(...addressData);
+    checkoutAddressList.push(...userAddressData);
+    pickupAddressList.push(...pickupAddressData);
+    courierList.push(...courierData);
   } catch (e) {
     if (isAppError(e)) {
       await insertError(supabaseClient, {
@@ -38,7 +43,14 @@ const Page = async () => {
     redirect("/checkout/error?reason=load-failed");
   }
 
-  return <CheckoutPage carList={carList} addressList={addressList} />;
+  return (
+    <CheckoutPage
+      carList={carList}
+      checkoutAddressList={checkoutAddressList}
+      pickupAddressList={pickupAddressList}
+      courierList={courierList}
+    />
+  );
 };
 
 export default Page;

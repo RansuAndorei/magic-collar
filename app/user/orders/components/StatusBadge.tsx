@@ -25,14 +25,25 @@ const StatusBadge = ({ label, color, description, prefix, size, variant = "light
           title={description}
           rightSection={<IconInfoCircle size={12} />}
           aria-label={`${content}. ${description}`}
-          onClick={(event) => event.stopPropagation()}
-          onKeyDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
+          onKeyDown={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
           style={{ cursor: "help" }}
         >
           {content}
         </Badge>
       </Popover.Target>
-      <Popover.Dropdown onClick={(event) => event.stopPropagation()}>
+      <Popover.Dropdown
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+      >
         <Stack gap={4}>
           <Text size="xs" fw={700}>
             {content}

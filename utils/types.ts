@@ -87,6 +87,10 @@ export type OrderItemStatusLogTableInsert =
 export type OrderItemStatusLogTableUpdate =
   Database["public"]["Tables"]["order_item_status_log_table"]["Update"];
 
+export type CourierTableRow = Database["public"]["Tables"]["courier_table"]["Row"];
+export type CourierTableInsert = Database["public"]["Tables"]["courier_table"]["Insert"];
+export type CourierTableUpdate = Database["public"]["Tables"]["courier_table"]["Update"];
+
 export type AttachmentBucketType = "CARS" | "USER_AVATARS" | "PAYMENT_PROOFS";
 
 export type PaymentDescriptionEnum = Database["public"]["Enums"]["payment_description"];
@@ -137,6 +141,10 @@ export type CheckoutAddressType = DeliveryDetailTableRow & {
   delivery_detail_address: AddressTableRow;
 };
 
+export type PickupAddressType = PickupAddressTableRow & {
+  pickup_address: AddressTableRow;
+};
+
 export type ShopFiltersType = {
   makeId: string;
   modelId: string;
@@ -162,6 +170,7 @@ export type CreateCheckoutReqType = {
   orderData: {
     fulfillmentType: string;
     selectedAddressId: string;
+    courier: string | null;
     items: { id: string; quantity: number }[];
   };
   description: PaymentDescriptionEnum;

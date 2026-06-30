@@ -22,11 +22,18 @@ import {
   rem,
   Stack,
   Text,
+  Title,
   UnstyledButton,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconBox, IconCalendar, IconChevronDown } from "@tabler/icons-react";
-import { useRouter } from "next/navigation";
+import {
+  IconBox,
+  IconCalendar,
+  IconChevronDown,
+  IconPackage,
+  IconTruckDelivery,
+} from "@tabler/icons-react";
+import Link from "next/link";
 import StatusBadge from "./StatusBadge";
 
 const formatStatusLabel = (status: string) => status.replace(/_/g, " ");
@@ -36,8 +43,6 @@ type Props = {
 };
 
 const OrderItem = ({ order }: Props) => {
-  const router = useRouter();
-
   const [itemsOpen, { toggle: toggleItems }] = useDisclosure(false);
 
   const visibleSidebarItems = itemsOpen
@@ -48,24 +53,21 @@ const OrderItem = ({ order }: Props) => {
 
   return (
     <Card
+      component={Link}
+      href={`/user/orders/${order.order_number}`}
       withBorder
       p="lg"
-      role="button"
-      tabIndex={0}
-      onClick={() => router.push(`/user/orders/${order.order_number}`)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          router.push(`/user/orders/${order.order_number}`);
-        }
-      }}
+      radius="md"
       style={{
+        display: "block",
         cursor: "pointer",
-        transition: "border-color 0.2s, box-shadow 0.2s, transform 0.2s",
+        textDecoration: "none",
+        color: "inherit",
+        transition: "border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease",
       }}
       onMouseEnter={(event) => {
         event.currentTarget.style.borderColor = "var(--mantine-color-red-6)";
-        event.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.12)";
+        event.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.10)";
         event.currentTarget.style.transform = "translateY(-2px)";
       }}
       onMouseLeave={(event) => {
@@ -75,21 +77,16 @@ const OrderItem = ({ order }: Props) => {
       }}
     >
       <Stack gap="md">
-        <Group justify="space-between" align="flex-start">
-          <Stack gap={4}>
-            <Group gap="xs">
-              <Text fw={800}>Order #{order.order_number}</Text>
+        <Group justify="space-between" align="flex-start" wrap="wrap">
+          <Stack gap={4} style={{ minWidth: 0 }}>
+            <Group gap="xs" wrap="wrap" align="center">
+              <Title fw={800} order={2}>
+                Order #{order.order_number}
+              </Title>
               <StatusBadge
                 label={order.order_status}
                 color={getOrderStatusColor(order.order_status)}
                 description={getOrderStatusDescription(order.order_status)}
-              />
-              <StatusBadge
-                label={formatStatusLabel(order.order_payment_status)}
-                color={getPaymentStatusColor(order.order_payment_status)}
-                description={getPaymentStatusDescription(order.order_payment_status)}
-                variant="dot"
-                prefix="Payment"
               />
             </Group>
             <Group gap={6} align="center">
@@ -99,26 +96,50 @@ const OrderItem = ({ order }: Props) => {
               </Text>
             </Group>
           </Stack>
-          <Stack gap={2} align="flex-end">
-            <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
-              Total
-            </Text>
-            <Text fw={800} c="red.5">
-              {formatCurrency(getOrderTotal(order.order_item), { minimumFractionDigits: 0 })}
-            </Text>
+          <Stack gap={4} align="flex-end" style={{ flexShrink: 0 }}>
+            <StatusBadge
+              label={formatStatusLabel(order.order_payment_status)}
+              color={getPaymentStatusColor(order.order_payment_status)}
+              description={getPaymentStatusDescription(order.order_payment_status)}
+              variant="dot"
+              prefix="Payment"
+            />
+            <Group gap="xs" align="center" justify="center">
+              <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                Total:
+              </Text>
+              <Text fw={800} c="red.5" size="lg">
+                {formatCurrency(getOrderTotal(order.order_item), { minimumFractionDigits: 0 })}
+              </Text>
+            </Group>
           </Stack>
         </Group>
 
         <Divider />
 
         <Stack gap="sm">
-          <Group gap="xs">
-            <IconBox size={16} color="var(--mantine-color-red-5)" />
-            <Text fw={700} size="sm">
-              Items
-            </Text>
-            <Badge variant="light" color="gray" size="xs">
-              {order.order_item.length}
+          <Group justify="space-between" align="center">
+            <Group gap="xs">
+              <IconBox size={16} color="var(--mantine-color-red-5)" />
+              <Text fw={700} size="sm">
+                Items
+              </Text>
+              <Badge variant="light" color="gray" size="xs">
+                {order.order_item.length}
+              </Badge>
+            </Group>
+            <Badge
+              variant="light"
+              color={order.order_fulfillment === "PICKUP" ? "blue" : "teal"}
+              leftSection={
+                order.order_fulfillment === "PICKUP" ? (
+                  <IconPackage size={12} />
+                ) : (
+                  <IconTruckDelivery size={12} />
+                )
+              }
+            >
+              {order.order_fulfillment === "PICKUP" ? "Pickup" : "Delivery"}
             </Badge>
           </Group>
 
@@ -173,7 +194,7 @@ const OrderItem = ({ order }: Props) => {
                 }
                 size="sm"
               />
-              <Text size="sm" fw={700}>
+              <Text size="sm" fw={700} style={{ flexShrink: 0 }}>
                 {formatCurrency(item.order_item_price * item.order_item_quantity, {
                   minimumFractionDigits: 0,
                 })}
@@ -184,6 +205,7 @@ const OrderItem = ({ order }: Props) => {
           {hiddenSidebarCount > 0 && (
             <UnstyledButton
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 toggleItems();
               }}

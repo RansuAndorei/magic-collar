@@ -24,6 +24,7 @@ import {
   CheckoutAddressType,
   OrderFulfillmentEnum,
   PaymentMethodType,
+  PickupAddressType,
 } from "@/utils/types";
 import {
   Alert,
@@ -47,8 +48,8 @@ import { notifications } from "@mantine/notifications";
 import {
   IconAlertCircle,
   IconArrowLeft,
-  IconBuildingStore,
   IconCreditCard,
+  IconExternalLink,
   IconMapPin,
   IconPackage,
   IconTruckDelivery,
@@ -62,8 +63,6 @@ type CheckoutCartItem = {
   product: CarShopType;
   quantity: number;
 };
-
-type CourierType = "LBC" | "LALAMOVE";
 
 const formatAddress = (address: CheckoutAddressType) =>
   [
@@ -88,10 +87,12 @@ const formatAddressSummary = (address: CheckoutAddressType) =>
 
 type Props = {
   carList: CarShopType[];
-  addressList: CheckoutAddressType[];
+  checkoutAddressList: CheckoutAddressType[];
+  pickupAddressList: PickupAddressType[];
+  courierList: string[];
 };
 
-const CheckoutPage = ({ carList, addressList }: Props) => {
+const CheckoutPage = ({ carList, checkoutAddressList, pickupAddressList, courierList }: Props) => {
   const router = useRouter();
   const pathname = usePathname();
   const userData = useUserData();
@@ -99,8 +100,10 @@ const CheckoutPage = ({ carList, addressList }: Props) => {
   const [hasLoadedCart, setHasLoadedCart] = useState(false);
   const [cartItems, setCartItems] = useState<CheckoutCartItem[]>([]);
   const [fulfillmentType, setFulfillmentType] = useState<OrderFulfillmentEnum>("DELIVERY");
-  const [courier, setCourier] = useState<CourierType>("LBC");
-  const [selectedAddressId, setSelectedAddressId] = useState("");
+  const [courier, setCourier] = useState(courierList[0]);
+  const [selectedCheckoutAddressId, setSelectedCheckoutAddressId] = useState("");
+  const [selectedPickupAddressId, setSelectedPickupAddressId] = useState("");
+
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>("qrph");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -118,16 +121,14 @@ const CheckoutPage = ({ carList, addressList }: Props) => {
       }, []),
     );
 
-    const defaultAddress = addressList.find((address) => address.delivery_detail_is_default);
-    setSelectedAddressId(
-      defaultAddress?.delivery_detail_id ?? addressList[0]?.delivery_detail_id ?? "",
+    const defaultAddress = checkoutAddressList.find(
+      (address) => address.delivery_detail_is_default,
+    );
+    setSelectedCheckoutAddressId(
+      defaultAddress?.delivery_detail_id ?? checkoutAddressList[0]?.delivery_detail_id ?? "",
     );
     setHasLoadedCart(true);
-  }, [addressList, carList]);
-
-  const selectedAddress = addressList.find(
-    (address) => address.delivery_detail_id === selectedAddressId,
-  );
+  }, [checkoutAddressList, carList]);
 
   const totals = useMemo(() => {
     return cartItems.reduce(
@@ -143,8 +144,41 @@ const CheckoutPage = ({ carList, addressList }: Props) => {
     );
   }, [cartItems]);
 
+  const selectedDeliveryAddress = checkoutAddressList.find(
+    (address) => address.delivery_detail_id === selectedCheckoutAddressId,
+  );
+  const selectedPickupAddress = pickupAddressList.find(
+    (address) => address.pickup_address_id === selectedPickupAddressId,
+  );
+
   const handleSubmit = async () => {
     if (isLoading || !userData) return;
+
+    if (fulfillmentType === "DELIVERY") {
+      if (!selectedDeliveryAddress) {
+        notifications.show({
+          message: "Please select a delivery address.",
+          color: "orange",
+        });
+        return;
+      }
+    }
+    if (fulfillmentType === "PICKUP") {
+      if (!selectedPickupAddress) {
+        notifications.show({
+          message: "Please select a pickup address.",
+          color: "orange",
+        });
+        return;
+      }
+      if (!selectedPickupAddress.pickup_address_is_available) {
+        notifications.show({
+          message: "Please select an available pickup address.",
+          color: "orange",
+        });
+        return;
+      }
+    }
 
     setIsLoading(true);
     try {
@@ -155,7 +189,9 @@ const CheckoutPage = ({ carList, addressList }: Props) => {
           paymentMethod,
           orderData: {
             fulfillmentType,
-            selectedAddressId,
+            selectedAddressId:
+              fulfillmentType === "DELIVERY" ? selectedCheckoutAddressId : selectedPickupAddressId,
+            courier: fulfillmentType === "DELIVERY" ? courier : null,
             items: cartItems.map((item) => ({ id: item.product.car_id, quantity: item.quantity })),
           },
           description: "DOWNPAYMENT",
@@ -192,7 +228,6 @@ const CheckoutPage = ({ carList, addressList }: Props) => {
         message: "Something went wrong. Please try again later.",
         color: "red",
       });
-
       if (isAppError(e)) {
         await insertError(supabaseClient, {
           errorTableInsert: {
@@ -400,34 +435,33 @@ const CheckoutPage = ({ carList, addressList }: Props) => {
                         <Select
                           label="Delivery Address"
                           placeholder={
-                            addressList.length ? "Select delivery address" : "No saved addresses"
+                            checkoutAddressList.length
+                              ? "Select delivery address"
+                              : "No saved addresses"
                           }
                           searchable
-                          disabled={addressList.length === 0}
-                          value={selectedAddressId || null}
-                          onChange={(value) => setSelectedAddressId(value ?? "")}
-                          data={addressList.map((address) => ({
+                          disabled={checkoutAddressList.length === 0}
+                          value={selectedCheckoutAddressId || null}
+                          onChange={(value) => setSelectedCheckoutAddressId(value ?? "")}
+                          data={checkoutAddressList.map((address) => ({
                             value: address.delivery_detail_id,
                             label: `${address.delivery_detail_full_name} • ${address.delivery_detail_address.address_postal_code}`,
                           }))}
                           renderOption={({ option }) => {
-                            const address = addressList.find(
+                            const address = checkoutAddressList.find(
                               (item) => item.delivery_detail_id === option.value,
                             );
                             if (!address) return option.label;
-
                             return (
                               <Stack gap={0}>
                                 <Group gap={6}>
                                   <Text fw={500} size="sm">
                                     {address.delivery_detail_full_name}
                                   </Text>
-
                                   {address.delivery_detail_is_default && (
                                     <Badge size="xs">Default</Badge>
                                   )}
                                 </Group>
-
                                 <Text size="xs" c="dimmed">
                                   {formatAddressSummary(address)}
                                 </Text>
@@ -435,24 +469,23 @@ const CheckoutPage = ({ carList, addressList }: Props) => {
                             );
                           }}
                         />
-                        {selectedAddress ? (
+                        {selectedDeliveryAddress ? (
                           <Alert color="blue" variant="light" icon={<IconMapPin size={16} />}>
                             <Group justify="space-between" mb={4}>
-                              <Text fw={700}>{selectedAddress.delivery_detail_full_name}</Text>
-
-                              {selectedAddress.delivery_detail_is_default && (
+                              <Text fw={700}>
+                                {selectedDeliveryAddress.delivery_detail_full_name}
+                              </Text>
+                              {selectedDeliveryAddress.delivery_detail_is_default && (
                                 <Badge size="sm">Default</Badge>
                               )}
                             </Group>
-
                             <Text size="sm" c="dimmed">
                               {formatPhilippineMobileNumber(
-                                selectedAddress.delivery_detail_phone_number,
+                                selectedDeliveryAddress.delivery_detail_phone_number,
                               )}
                             </Text>
-
                             <Text size="sm" mt={4}>
-                              {formatAddress(selectedAddress)}
+                              {formatAddress(selectedDeliveryAddress)}
                             </Text>
                           </Alert>
                         ) : (
@@ -462,7 +495,6 @@ const CheckoutPage = ({ carList, addressList }: Props) => {
                             icon={<IconAlertCircle size={16} />}
                           >
                             <Text fw={500}>Delivery address required</Text>
-
                             <Text size="sm">
                               Please select a saved address or add a new one from your{" "}
                               <Link href="/user/profile">profile settings</Link>. If you'd rather
@@ -473,19 +505,115 @@ const CheckoutPage = ({ carList, addressList }: Props) => {
                         <Radio.Group
                           label="Courier"
                           value={courier}
-                          onChange={(value) => setCourier(value as CourierType)}
+                          onChange={(value) => setCourier(value)}
                         >
                           <Group mt="xs">
-                            <Radio value="LBC" label="LBC" />
-                            <Radio value="Lalamove" label="Lalamove" />
+                            {courierList.map((c) => (
+                              <Radio key={c} value={c} label={c} />
+                            ))}
                           </Group>
                         </Radio.Group>
                       </Stack>
                     ) : (
-                      <Alert color="red" variant="light" icon={<IconBuildingStore size={16} />}>
-                        Pick up your order at the Magic Collar store. We will confirm pickup details
-                        after down payment verification.
-                      </Alert>
+                      <Stack gap="md">
+                        <Divider />
+                        <Select
+                          label="Pickup Address"
+                          placeholder="Select pickup address"
+                          searchable
+                          disabled={pickupAddressList.length === 0}
+                          value={selectedPickupAddressId || null}
+                          onChange={(value) => setSelectedPickupAddressId(value ?? "")}
+                          data={pickupAddressList.map((address) => ({
+                            value: address.pickup_address_id,
+                            label: `${address.pickup_address.address_street}, ${address.pickup_address.address_barangay}, ${address.pickup_address.address_city}`,
+                          }))}
+                          renderOption={({ option }) => {
+                            const address = pickupAddressList.find(
+                              (item) => item.pickup_address_id === option.value,
+                            );
+                            if (!address) return option.label;
+                            const pickupAddress = address.pickup_address;
+                            const isUnavailable = !address.pickup_address_is_available;
+
+                            return (
+                              <Stack gap={2} w="100%">
+                                <Group justify="space-between" wrap="nowrap">
+                                  <Text fw={500} size="sm">
+                                    {pickupAddress.address_street}, {pickupAddress.address_barangay}
+                                  </Text>
+                                  {isUnavailable && (
+                                    <Badge
+                                      color="red"
+                                      variant="light"
+                                      size="xs"
+                                      style={{ flexShrink: 0 }}
+                                    >
+                                      Unavailable
+                                    </Badge>
+                                  )}
+                                </Group>
+                                <Text size="xs" c="dimmed">
+                                  {pickupAddress.address_city}, {pickupAddress.address_province},{" "}
+                                  {pickupAddress.address_postal_code}
+                                </Text>
+                              </Stack>
+                            );
+                          }}
+                        />
+                        {selectedPickupAddress ? (
+                          <Alert color="blue" variant="light" icon={<IconMapPin size={16} />}>
+                            <Text fw={700} mb={4}>
+                              {selectedPickupAddress.pickup_address.address_street},{" "}
+                              {selectedPickupAddress.pickup_address.address_barangay}
+                            </Text>
+                            <Text size="sm">
+                              {selectedPickupAddress.pickup_address.address_city},{" "}
+                              {selectedPickupAddress.pickup_address.address_province},{" "}
+                              {selectedPickupAddress.pickup_address.address_region}
+                            </Text>
+                            <Text size="sm" c="dimmed">
+                              {selectedPickupAddress.pickup_address.address_postal_code}
+                            </Text>
+                            <Button
+                              component="a"
+                              href={`https://www.google.com/maps?q=${selectedPickupAddress.pickup_address_latitude},${selectedPickupAddress.pickup_address_longitude}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              variant="filled"
+                              color="blue"
+                              size="xs"
+                              mt={8}
+                              rightSection={<IconExternalLink size={11} />}
+                            >
+                              View on Google Maps
+                            </Button>
+                            {!selectedPickupAddress.pickup_address_is_available && (
+                              <Alert
+                                color="red"
+                                variant="light"
+                                icon={<IconAlertCircle size={14} />}
+                                mt={8}
+                                p="xs"
+                              >
+                                <Text size="xs" fw={500}>
+                                  This pickup location is currently unavailable. Please select a
+                                  different address.
+                                </Text>
+                              </Alert>
+                            )}
+                          </Alert>
+                        ) : (
+                          <Alert
+                            color="yellow"
+                            variant="light"
+                            icon={<IconAlertCircle size={16} />}
+                          >
+                            <Text fw={500}>Pickup address required</Text>
+                            <Text size="sm">Please select an available pickup address.</Text>
+                          </Alert>
+                        )}
+                      </Stack>
                     )}
                   </Stack>
                 </Card>

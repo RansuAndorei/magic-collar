@@ -1,18 +1,11 @@
 import { Database } from "@/utils/database";
-import { PaymentTableUpdate } from "@/utils/types";
+import { CreateCheckoutReqType, PaymentTableUpdate } from "@/utils/types";
 import { SupabaseClient } from "@supabase/supabase-js";
 
 export const createOrder = async (
   supabaseClient: SupabaseClient<Database>,
   params: {
-    orderData: {
-      fulfillmentType: string;
-      selectedAddressId: string;
-      items: {
-        id: string;
-        quantity: number;
-      }[];
-    };
+    orderData: CreateCheckoutReqType["orderData"];
     totalQuantity: number;
     userId: string;
     paymentFeePercentage: number;

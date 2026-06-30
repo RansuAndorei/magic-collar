@@ -24,6 +24,7 @@ const OrderDetailPage = ({ order, paymentChannelList, approvedPaymentTotal }: Pr
           <StatusSection order={order} />
 
           <FulfillmentSection
+            fulfillmentType={order.order_fulfillment}
             fullName={order.order_delivery_detail_full_name}
             phoneNumber={order.order_delivery_detail_phone_number}
             street={order.order_address_street}
@@ -32,6 +33,8 @@ const OrderDetailPage = ({ order, paymentChannelList, approvedPaymentTotal }: Pr
             province={order.order_address_province}
             region={order.order_address_region}
             postalCode={order.order_address_postal_code}
+            longitude={order.order_address_longitude}
+            latitude={order.order_address_latitude}
           />
 
           <OrderItemSection order={order} />

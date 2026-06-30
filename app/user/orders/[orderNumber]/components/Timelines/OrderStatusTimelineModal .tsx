@@ -11,8 +11,8 @@ import { OrderStatusLogTableRow } from "@/utils/types";
 import { Badge, Group, Loader, Modal, Text, Timeline } from "@mantine/core";
 import { IconArrowRight, IconHistory } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
+import StatusBadge from "../../../components/StatusBadge";
 import { fetchOrderStatusLog } from "../../actions";
-import StatusBadge from "../StatusBadge";
 
 type Props = {
   orderId: string;

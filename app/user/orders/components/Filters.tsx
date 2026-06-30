@@ -1,5 +1,9 @@
-import { ORDER_STATUS_OPTIONS, PAYMENT_STATUS_OPTIONS } from "@/utils/constants";
-import { OrderPaymentStatusEnum, OrderStatusEnum } from "@/utils/types";
+import {
+  FULFILLMENT_OPTIONS,
+  ORDER_STATUS_OPTIONS,
+  PAYMENT_STATUS_OPTIONS,
+} from "@/utils/constants";
+import { OrderFulfillmentEnum, OrderPaymentStatusEnum, OrderStatusEnum } from "@/utils/types";
 import { Grid, Select, TextInput } from "@mantine/core";
 import { IconSearch } from "@tabler/icons-react";
 import { Dispatch, SetStateAction } from "react";
@@ -12,6 +16,8 @@ type Props = {
   setOrderStatus: Dispatch<SetStateAction<OrderStatusEnum | "ALL">>;
   paymentStatus: OrderPaymentStatusEnum | "ALL";
   setPaymentStatus: Dispatch<SetStateAction<OrderPaymentStatusEnum | "ALL">>;
+  fulfillment: OrderFulfillmentEnum | "ALL";
+  setFulfillment: Dispatch<SetStateAction<OrderFulfillmentEnum | "ALL">>;
 };
 
 const Filters = ({
@@ -22,6 +28,8 @@ const Filters = ({
   setOrderStatus,
   paymentStatus,
   setPaymentStatus,
+  fulfillment,
+  setFulfillment,
 }: Props) => {
   return (
     <Grid>
@@ -38,7 +46,7 @@ const Filters = ({
         />
       </Grid.Col>
 
-      <Grid.Col span={{ base: 12, md: 3 }}>
+      <Grid.Col span={{ base: 12, md: 2 }}>
         <Select
           data={ORDER_STATUS_OPTIONS}
           value={orderStatus}
@@ -50,7 +58,7 @@ const Filters = ({
         />
       </Grid.Col>
 
-      <Grid.Col span={{ base: 12, md: 3 }}>
+      <Grid.Col span={{ base: 12, md: 2 }}>
         <Select
           data={PAYMENT_STATUS_OPTIONS}
           value={paymentStatus}
@@ -59,6 +67,18 @@ const Filters = ({
             setPage(1);
           }}
           label="Payment Status"
+        />
+      </Grid.Col>
+
+      <Grid.Col span={{ base: 12, md: 2 }}>
+        <Select
+          data={FULFILLMENT_OPTIONS}
+          value={fulfillment}
+          onChange={(value) => {
+            setFulfillment((value as OrderFulfillmentEnum | "ALL") ?? "ALL");
+            setPage(1);
+          }}
+          label="Fulfillment"
         />
       </Grid.Col>
     </Grid>
