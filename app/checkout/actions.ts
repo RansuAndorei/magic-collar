@@ -43,7 +43,7 @@ export const getCourierList = async (supabaseClient: SupabaseClient<Database>) =
   const { data, error } = await supabaseClient
     .from("courier_table")
     .select("courier_name")
-    .eq("courier_is_active", true)
+    .eq("courier_is_available", true)
     .eq("courier_is_disabled", false)
     .order("courier_name", { ascending: true });
   if (error) throw error;

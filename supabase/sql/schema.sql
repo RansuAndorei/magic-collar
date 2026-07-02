@@ -447,7 +447,7 @@ CREATE TABLE payment_channel_table(
   payment_channel_date_created TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   payment_channel_date_updated TIMESTAMPTZ,
   payment_channel_is_disabled BOOLEAN DEFAULT false NOT NULL,
-  payment_channel_is_active BOOLEAN DEFAULT true NOT NULL,
+  payment_channel_is_available BOOLEAN DEFAULT true NOT NULL,
   payment_channel_provider_name TEXT NOT NULL,
   payment_channel_account_name TEXT NOT NULL,
   payment_channel_account_identifier TEXT NOT NULL,
@@ -477,7 +477,7 @@ CREATE TABLE courier_table(
   courier_date_created TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   courier_date_updated TIMESTAMPTZ,
   courier_is_disabled BOOLEAN DEFAULT false NOT NULL,
-  courier_is_active BOOLEAN DEFAULT true NOT NULL,
+  courier_is_available BOOLEAN DEFAULT true NOT NULL,
   courier_name TEXT NOT NULL,
 
   courier_created_by_admin_user_id UUID REFERENCES user_table(user_id) NOT NULL,

@@ -29,6 +29,7 @@ import {
   IconUpload,
   IconX,
 } from "@tabler/icons-react";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
@@ -298,9 +299,11 @@ const CarModal = ({
                   >
                     {imagePreviewUrl ? (
                       <>
-                        <img
+                        <Image
                           src={imagePreviewUrl}
                           alt="Preview"
+                          width={300}
+                          height={300}
                           style={{
                             height: "100%",
                             width: "auto",

@@ -93,7 +93,11 @@ export type CourierTableRow = Database["public"]["Tables"]["courier_table"]["Row
 export type CourierTableInsert = Database["public"]["Tables"]["courier_table"]["Insert"];
 export type CourierTableUpdate = Database["public"]["Tables"]["courier_table"]["Update"];
 
-export type AttachmentBucketType = "CARS" | "USER_AVATARS" | "PAYMENT_PROOFS";
+export type AttachmentBucketType =
+  | "CARS"
+  | "USER_AVATARS"
+  | "PAYMENT_PROOFS"
+  | "PAYMENT_CHANNEL_QR";
 
 export type PaymentDescriptionEnum = Database["public"]["Enums"]["payment_description"];
 export type OrderFulfillmentEnum = Database["public"]["Enums"]["order_fulfillment"];
@@ -239,6 +243,7 @@ export type AdminOrderSortAccessor =
   | "order_status"
   | "order_payment_status";
 export type AdminPickupAddressSortAccessor = "pickup_address_date_created";
+export type AdminPaymentChannelSortAccessor = "payment_channel_date_created";
 
 export type AdminOrder = OrderTableRow & {
   order_user: UserTableRow;
@@ -316,6 +321,20 @@ export type PickupAddressFormType = {
   postalCode: string;
   latitude: number | null;
   longitude: number | null;
+  isAvailable: boolean;
+};
+
+export type PaymentChannelFormType = {
+  paymentChannelId?: string;
+  providerName: string;
+  accountName: string;
+  accountIdentifier: string;
+  qrCode: File | null;
+  existingAttachment: {
+    id: string;
+    path: string;
+    name: string;
+  } | null;
   isAvailable: boolean;
 };
 

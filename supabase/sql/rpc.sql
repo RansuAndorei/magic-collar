@@ -1036,6 +1036,7 @@ DECLARE
   var_attachment_id UUID;
   var_old_make_id UUID;
   var_old_model_id UUID;
+  var_old_attachment_id UUID;
 BEGIN
   SELECT make_id
   INTO var_make_id
@@ -1075,6 +1076,17 @@ BEGIN
     END IF;
   END IF;
 
+  SELECT
+    car_make_id,
+    car_model_id,
+    car_image_attachment_id
+  INTO
+    var_old_make_id,
+    var_old_model_id,
+    var_old_attachment_id
+  FROM car_table
+  WHERE car_id = input_car_id;
+
   IF input_attachment_data IS NOT NULL THEN
     INSERT INTO attachment_table (
       attachment_name,
@@ -1091,16 +1103,11 @@ BEGIN
     )
     RETURNING attachment_id
     INTO var_attachment_id;
-  END IF;
 
-  SELECT
-    car_make_id,
-    car_model_id
-  INTO
-    var_old_make_id,
-    var_old_model_id
-  FROM car_table
-  WHERE car_id = input_car_id;
+    DELETE
+    FROM attachment_table
+    WHERE attachment_id = var_old_attachment_id;
+  END IF;
 
   UPDATE car_table
   SET
@@ -1941,7 +1948,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-
 CREATE OR REPLACE FUNCTION delete_pickup_address(input_data JSONB)
 RETURNS VOID
 AS $$
@@ -1955,5 +1961,199 @@ BEGIN
     pickup_address_updated_by_admin_user_id = input_admin_user_id,
     pickup_address_date_updated = NOW()
   WHERE pickup_address_id = input_pickup_address_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_admin_payment_channel_page(input_data JSONB)
+RETURNS JSONB
+AS $$
+DECLARE
+  input_page INT := COALESCE((input_data->>'page')::INT, 1);
+  input_records_per_page INT := COALESCE((input_data->>'recordsPerPage')::INT, 10);
+  input_search TEXT := COALESCE(NULLIF(TRIM(input_data->>'search'), ''), '');
+  input_status BOOLEAN := (input_data->>'status')::BOOLEAN;
+  input_sort_column TEXT := COALESCE(input_data->>'sortColumnAccessor', 'payment_channel_date_created');
+  input_sort_direction TEXT := COALESCE(input_data->>'sortDirection', 'desc');
+
+  var_ascending BOOLEAN := (input_sort_direction = 'asc');
+  var_offset_count INT := (input_page - 1) * input_records_per_page;
+  var_total_records INT;
+  var_records JSONB;
+
+  return_data JSONB;
+BEGIN
+  SELECT COUNT(*)
+  INTO var_total_records
+  FROM payment_channel_table
+  WHERE payment_channel_is_disabled = false
+    AND (input_status IS NULL OR payment_channel_is_available = input_status)
+    AND (
+      input_search = '' OR
+      LOWER(payment_channel_provider_name) LIKE '%' || LOWER(input_search) || '%' OR
+      LOWER(payment_channel_account_name) LIKE '%' || LOWER(input_search) || '%' OR
+      LOWER(payment_channel_account_identifier) LIKE '%' || LOWER(input_search) || '%'
+    );
+
+  SELECT COALESCE(JSONB_AGG(payment_data), '[]'::JSONB)
+  FROM (
+    SELECT
+      payment_channel_table.*,
+      TO_JSONB(attachment_table.*) AS payment_channel_qr_code_attachment
+    FROM payment_channel_table
+    INNER JOIN attachment_table
+      ON payment_channel_qr_code_attachment_id = attachment_id
+    WHERE payment_channel_is_disabled = false
+      AND (input_status IS NULL OR payment_channel_is_available = input_status)
+      AND (
+        input_search = '' OR
+        LOWER(payment_channel_provider_name) LIKE '%' || LOWER(input_search) || '%' OR
+        LOWER(payment_channel_account_name) LIKE '%' || LOWER(input_search) || '%' OR
+        LOWER(payment_channel_account_identifier) LIKE '%' || LOWER(input_search) || '%'
+      )
+    ORDER BY
+      CASE WHEN input_sort_column = 'payment_channel_date_created' AND var_ascending
+        THEN payment_channel_date_created END ASC,
+      CASE WHEN input_sort_column = 'payment_channel_date_created' AND NOT var_ascending
+        THEN payment_channel_date_created END DESC
+    LIMIT input_records_per_page OFFSET var_offset_count
+  ) payment_data
+  INTO var_records;
+
+  return_data = JSON_BUILD_OBJECT(
+    'records', var_records,
+    'totalRecords', var_total_records
+  );
+
+  RETURN return_data;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION set_payment_channel_availability(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_payment_channel_id UUID := (input_data->>'paymentChannelId')::UUID;
+  input_is_available BOOLEAN := (input_data->>'isAvailable')::BOOLEAN;
+  input_admin_user_id UUID := (input_data->>'adminUserId')::UUID;
+BEGIN
+  UPDATE payment_channel_table
+  SET
+    payment_channel_is_available = input_is_available,
+    payment_channel_updated_by_admin_user_id = input_admin_user_id,
+    payment_channel_date_updated = NOW()
+  WHERE payment_channel_id = input_payment_channel_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION delete_payment_channel(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_payment_channel_id UUID := (input_data->>'paymentChannelId')::UUID;
+  input_admin_user_id UUID := (input_data->>'adminUserId')::UUID;
+BEGIN
+  UPDATE payment_channel_table
+  SET
+    payment_channel_is_disabled = true,
+    payment_channel_updated_by_admin_user_id = input_admin_user_id,
+    payment_channel_date_updated = NOW()
+  WHERE payment_channel_id = input_payment_channel_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION create_payment_channel(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_attachment_insert JSONB = (input_data->'attachmentInsert')::JSONB;
+  input_payment_channel_insert JSONB = (input_data->'paymentChannelInsert')::JSONB;
+
+  var_attachment_id UUID;
+BEGIN
+  INSERT INTO attachment_table (
+    attachment_name,
+    attachment_path,
+    attachment_bucket,
+    attachment_mime_type,
+    attachment_size
+  ) VALUES (
+    (input_attachment_insert->>'attachment_name'),
+    (input_attachment_insert->>'attachment_path'),
+    (input_attachment_insert->>'attachment_bucket'),
+    (input_attachment_insert->>'attachment_mime_type'),
+    (input_attachment_insert->>'attachment_size')::BIGINT
+  )
+  RETURNING attachment_id
+  INTO var_attachment_id;
+
+  INSERT INTO payment_channel_table (
+    payment_channel_is_available,
+    payment_channel_provider_name,
+    payment_channel_account_name,
+    payment_channel_account_identifier,
+    payment_channel_qr_code_attachment_id,
+    payment_channel_created_by_admin_user_id
+  )
+  VALUES (
+    (input_payment_channel_insert->>'payment_channel_is_available')::BOOLEAN,
+    (input_payment_channel_insert->>'payment_channel_provider_name'),
+    (input_payment_channel_insert->>'payment_channel_account_name'),
+    (input_payment_channel_insert->>'payment_channel_account_identifier'),
+    var_attachment_id,
+    (input_payment_channel_insert->>'payment_channel_created_by_admin_user_id')::UUID
+  );
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION update_payment_channel(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_payment_channel_id UUID := (input_data->>'paymentChannelId')::UUID;
+  input_attachment_id UUID := (input_data->>'attachmentId')::UUID;
+  input_attachment_data JSONB := COALESCE(input_data->'attachmentData', '{}'::JSONB);
+  input_payment_channel_update JSONB := COALESCE(input_data->'paymentChannelUpdate', '{}'::JSONB);
+
+  var_attachment_id UUID;
+BEGIN
+  IF input_attachment_data IS NOT NULL THEN
+    INSERT INTO attachment_table (
+      attachment_name,
+      attachment_path,
+      attachment_bucket,
+      attachment_mime_type,
+      attachment_size
+    ) VALUES (
+      (input_attachment_data->>'attachment_name'),
+      (input_attachment_data->>'attachment_path'),
+      (input_attachment_data->>'attachment_bucket'),
+      (input_attachment_data->>'attachment_mime_type'),
+      (input_attachment_data->>'attachment_size')::BIGINT
+    )
+    RETURNING attachment_id
+    INTO var_attachment_id;
+
+    DELETE
+    FROM attachment_table
+    WHERE attachment_id = input_attachment_id;
+  END IF;
+
+  UPDATE payment_channel_table
+  SET
+    payment_channel_provider_name =
+      COALESCE((input_payment_channel_update->>'payment_channel_provider_name'), payment_channel_provider_name),
+    payment_channel_account_name =
+      COALESCE((input_payment_channel_update->>'payment_channel_account_name'), payment_channel_account_name),
+    payment_channel_account_identifier =
+      COALESCE((input_payment_channel_update->>'payment_channel_account_identifier'), payment_channel_account_identifier),
+    payment_channel_is_available =
+      COALESCE((input_payment_channel_update->>'payment_channel_is_available')::BOOLEAN, payment_channel_is_available),
+    payment_channel_updated_by_admin_user_id =
+      COALESCE((input_payment_channel_update->>'payment_channel_updated_by_admin_user_id')::UUID, payment_channel_updated_by_admin_user_id),
+    payment_channel_date_updated =
+      COALESCE((input_payment_channel_update->>'payment_channel_date_updated')::TIMESTAMPTZ, NOW()),
+    payment_channel_qr_code_attachment_id =
+      COALESCE(var_attachment_id, input_attachment_id)
+  WHERE payment_channel_id = input_payment_channel_id;
 END;
 $$ LANGUAGE plpgsql;

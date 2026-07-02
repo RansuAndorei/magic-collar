@@ -6,23 +6,16 @@ import TableColumnVisibility, {
 } from "@/app/admin/components/TableColumnVisibility";
 import { useUserData } from "@/stores/useUserStore";
 import { PAGINATION_OPTIONS, STATUS_OPTIONS, TEXT_LIMITS } from "@/utils/constants";
-import {
-  formatAddress,
-  formatDate,
-  getAvailabilityProps,
-  isAppError,
-  parseStatus,
-} from "@/utils/functions";
+import { formatDate, getAvailabilityProps, isAppError, parseStatus } from "@/utils/functions";
 import { supabaseClient } from "@/utils/supabase/client";
 import {
-  AdminPickupAddressSortAccessor,
+  AdminPaymentChannelSortAccessor,
   AdminSortStatus,
-  PickupAddressFormType,
-  PickupAddressType,
+  PaymentChannelFormType,
+  PaymentChannelType,
 } from "@/utils/types";
 import {
   ActionIcon,
-  Anchor,
   Badge,
   Box,
   Button,
@@ -41,59 +34,53 @@ import { useDebouncedValue } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import {
-  IconExternalLink,
   IconMapPin,
   IconPencil,
   IconPlayerPause,
   IconPlayerPlay,
   IconPlus,
+  IconQrcode,
   IconSearch,
   IconTrash,
 } from "@tabler/icons-react";
 import { DataTable, DataTableColumn } from "mantine-datatable";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  checkPickupAddressCount,
-  deletePickupAddress,
-  getAdminPickupAddressesPage,
-  setPickupAddressAvailability,
-} from "../actions";
-import PickupAddressModal from "./PickupAddressModal";
 
-const emptyFormValues: PickupAddressFormType = {
-  street: "",
-  barangay: "",
-  barangayOptions: [],
-  city: "",
-  cityOptions: [],
-  province: "",
-  provinceOptions: [],
-  region: "",
-  regionOptions: [],
-  postalCode: "",
-  latitude: null,
-  longitude: null,
+import {
+  checkPaymentChannelCount,
+  deletePaymentChannel,
+  getAdminPaymentChannelPage,
+  setPaymentChannelAvailability,
+} from "../actions";
+import PaymentChannelsModal from "./PaymentChannelsModal";
+
+const emptyFormValues: PaymentChannelFormType = {
+  paymentChannelId: "",
+  providerName: "",
+  accountName: "",
+  accountIdentifier: "",
+  qrCode: null,
+  existingAttachment: null,
   isAvailable: true,
 };
 
-const pickupAddressColumnOptions: TableColumnVisibilityOption[] = [
-  { value: "address", label: "Address" },
-  { value: "map", label: "Google Map Link" },
-  { value: "pickup_address_date_created", label: "Date Created" },
-  { value: "status", label: "Status" },
+const paymentChannelColumnOptions: TableColumnVisibilityOption[] = [
+  { value: "payment_channel_account_identifier", label: "Account Identifier" },
+  { value: "payment_channel_date_created", label: "Date Created" },
+  { value: "payment_channel_provider_name", label: "Provider" },
+  { value: "payment_channel_account_name", label: "Account Name" },
+  { value: "payment_channel_qr_code_attachment", label: "QR Code" },
+  { value: "payment_channel_is_available", label: "Status" },
   { value: "actions", label: "Actions" },
 ];
 
-const getMapLink = (record: PickupAddressType) =>
-  `https://www.google.com/maps?q=${record.pickup_address_latitude},${record.pickup_address_longitude}`;
-
-const PickupAddressesPage = () => {
+const PaymentChannelsPage = () => {
   const userData = useUserData();
   const pathname = usePathname();
   const router = useRouter();
 
-  const [records, setRecords] = useState<PickupAddressType[]>([]);
+  const [records, setRecords] = useState<PaymentChannelType[]>([]);
   const [totalRecords, setTotalRecords] = useState(0);
   const [searchInput, setSearchInput] = useState("");
   const [search] = useDebouncedValue(searchInput, 400);
@@ -104,25 +91,25 @@ const PickupAddressesPage = () => {
   const [loadingRow, setLoadingRow] = useState<{ id: string; action: "disable" | "delete" } | null>(
     null,
   );
-  const [sortStatus, setSortStatus] = useState<AdminSortStatus<AdminPickupAddressSortAccessor>>({
-    columnAccessor: "pickup_address_date_created",
+  const [sortStatus, setSortStatus] = useState<AdminSortStatus<AdminPaymentChannelSortAccessor>>({
+    columnAccessor: "payment_channel_date_created",
     direction: "desc",
   });
   const [opened, setOpened] = useState(false);
-  const [values, setValues] = useState<PickupAddressFormType>(emptyFormValues);
+  const [values, setValues] = useState<PaymentChannelFormType>(emptyFormValues);
   const [visibleColumns, setVisibleColumns] = useState(
-    pickupAddressColumnOptions.map((column) => column.value),
+    paymentChannelColumnOptions.map((column) => column.value),
   );
 
   useEffect(() => {
     setPage(1);
   }, [search, status]);
 
-  const loadPickupAddresses = useCallback(async () => {
+  const loadPaymentChannel = useCallback(async () => {
     if (!userData) return;
     setFetching(true);
     try {
-      const result = await getAdminPickupAddressesPage(supabaseClient, {
+      const result = await getAdminPaymentChannelPage(supabaseClient, {
         page,
         recordsPerPage,
         search: search.toLocaleLowerCase(),
@@ -142,7 +129,7 @@ const PickupAddressesPage = () => {
           errorTableInsert: {
             error_message: e.message,
             error_url: pathname,
-            error_function: "loadPickupAddresses",
+            error_function: "loadPaymentChannel",
             error_user_email: userData.email,
             error_user_id: userData.id,
           },
@@ -154,13 +141,13 @@ const PickupAddressesPage = () => {
   }, [page, pathname, recordsPerPage, search, sortStatus, status, userData]);
 
   useEffect(() => {
-    loadPickupAddresses();
-  }, [loadPickupAddresses]);
+    loadPaymentChannel();
+  }, [loadPaymentChannel]);
 
   const refreshTable = useCallback(() => {
-    loadPickupAddresses();
+    loadPaymentChannel();
     router.refresh();
-  }, [loadPickupAddresses, router]);
+  }, [loadPaymentChannel, router]);
 
   const handleRecordsPerPageChange = useCallback((value: number) => {
     setRecordsPerPage(value);
@@ -169,9 +156,9 @@ const PickupAddressesPage = () => {
 
   const handleSortStatusChange = useCallback(
     (nextSortStatus: { columnAccessor: string; direction: "asc" | "desc" }) => {
-      if (nextSortStatus.columnAccessor !== "pickup_address_date_created") return;
+      if (nextSortStatus.columnAccessor !== "payment_channel_date_created") return;
       setSortStatus({
-        columnAccessor: "pickup_address_date_created",
+        columnAccessor: "payment_channel_date_created",
         direction: nextSortStatus.direction,
       });
       setPage(1);
@@ -184,54 +171,49 @@ const PickupAddressesPage = () => {
     setOpened(true);
   }, []);
 
-  const openEditModal = useCallback((record: PickupAddressType) => {
+  const openEditModal = useCallback((record: PaymentChannelType) => {
     setValues({
-      pickupAddressId: record.pickup_address_id,
-      addressId: record.pickup_address.address_id,
-      street: record.pickup_address.address_street,
-      barangay: record.pickup_address.address_barangay,
-      barangayOptions: [],
-      city: record.pickup_address.address_city,
-      cityOptions: [],
-      province: record.pickup_address.address_province,
-      provinceOptions: [],
-      region: record.pickup_address.address_region,
-      regionOptions: [],
-      postalCode: record.pickup_address.address_postal_code,
-      latitude: record.pickup_address_latitude,
-      longitude: record.pickup_address_longitude,
-      isAvailable: record.pickup_address_is_available,
+      providerName: record.payment_channel_provider_name,
+      accountName: record.payment_channel_account_name,
+      accountIdentifier: record.payment_channel_account_identifier,
+      qrCode: null,
+      existingAttachment: {
+        id: record.payment_channel_qr_code_attachment_id,
+        path: record.payment_channel_qr_code_attachment.attachment_path,
+        name: record.payment_channel_qr_code_attachment.attachment_name,
+      },
+      isAvailable: record.payment_channel_is_available,
     });
     setOpened(true);
   }, []);
 
   const handleAvailabilityChange = useCallback(
-    async (record: PickupAddressType) => {
+    async (record: PaymentChannelType) => {
       if (!userData) return;
-      setLoadingRow({ id: record.pickup_address_id, action: "disable" });
+      setLoadingRow({ id: record.payment_channel_id, action: "disable" });
 
-      if (record.pickup_address_is_available) {
-        const isSafe = await checkPickupAddressCount(supabaseClient, {
-          pickupAddressId: record.pickup_address_id,
+      if (record.payment_channel_is_available) {
+        const isSafe = await checkPaymentChannelCount(supabaseClient, {
+          paymentChannelId: record.payment_channel_id,
         });
         if (!isSafe) {
           notifications.show({
             color: "orange",
             message:
-              "At least one pickup address is required. Please add an available pickup address before proceeding.",
+              "At least one payment channel is required. Please add an available payment channel before proceeding.",
           });
           setLoadingRow(null);
           return;
         }
       }
       try {
-        await setPickupAddressAvailability(supabaseClient, {
-          pickupAddressId: record.pickup_address_id,
-          isAvailable: !record.pickup_address_is_available,
+        await setPaymentChannelAvailability(supabaseClient, {
+          paymentChannelId: record.payment_channel_id,
+          isAvailable: !record.payment_channel_is_available,
           adminUserId: userData.id,
         });
         notifications.show({
-          message: "Pickup address availability updated successfully.",
+          message: "Payment channel availability updated successfully.",
           color: "green",
         });
         refreshTable();
@@ -259,22 +241,22 @@ const PickupAddressesPage = () => {
   );
 
   const confirmAvailabilityChange = useCallback(
-    (record: PickupAddressType) => {
+    (record: PaymentChannelType) => {
       modals.openConfirmModal({
-        title: `${record.pickup_address_is_available ? "Disable" : "Enable"} pickup address?`,
+        title: `${record.payment_channel_is_available ? "Disable" : "Enable"} payment channel?`,
         centered: true,
         children: (
           <Text size="sm">
-            {record.pickup_address_is_available
-              ? "Customers will no longer be able to choose this pickup address during checkout."
-              : "Customers will be able to choose this pickup address during checkout."}
+            {record.payment_channel_is_available
+              ? "Customers will no longer be able to choose this payment channel during payment."
+              : "Customers will be able to choose this payment channel during payment."}
           </Text>
         ),
         labels: {
-          confirm: record.pickup_address_is_available ? "Disable" : "Enable",
+          confirm: record.payment_channel_is_available ? "Disable" : "Enable",
           cancel: "Cancel",
         },
-        confirmProps: { color: record.pickup_address_is_available ? "yellow" : "green" },
+        confirmProps: { color: record.payment_channel_is_available ? "yellow" : "green" },
         onConfirm: () => handleAvailabilityChange(record),
       });
     },
@@ -282,28 +264,28 @@ const PickupAddressesPage = () => {
   );
 
   const handleDelete = useCallback(
-    async (record: PickupAddressType) => {
+    async (record: PaymentChannelType) => {
       if (!userData) return;
-      setLoadingRow({ id: record.pickup_address_id, action: "delete" });
+      setLoadingRow({ id: record.payment_channel_id, action: "delete" });
       try {
-        const isSafe = await checkPickupAddressCount(supabaseClient, {
-          pickupAddressId: record.pickup_address_id,
+        const isSafe = await checkPaymentChannelCount(supabaseClient, {
+          paymentChannelId: record.payment_channel_id,
         });
         if (!isSafe) {
           notifications.show({
             color: "orange",
             message:
-              "At least one pickup address is required. Please add an available pickup address before proceeding.",
+              "At least payment channel is required. Please add an available payment channel before proceeding.",
           });
           setLoadingRow(null);
           return;
         }
 
-        await deletePickupAddress(supabaseClient, {
-          pickupAddressId: record.pickup_address_id,
+        await deletePaymentChannel(supabaseClient, {
+          paymentChannelId: record.payment_channel_id,
           adminUserId: userData.id,
         });
-        notifications.show({ message: "Pickup address deleted successfully.", color: "green" });
+        notifications.show({ message: "Payment channel deleted successfully.", color: "green" });
         refreshTable();
       } catch (e) {
         notifications.show({
@@ -315,7 +297,7 @@ const PickupAddressesPage = () => {
             errorTableInsert: {
               error_message: e.message,
               error_url: pathname,
-              error_function: "deletePickupAddress",
+              error_function: "deletePaymentChannel",
               error_user_email: userData.email,
               error_user_id: userData.id,
             },
@@ -329,17 +311,17 @@ const PickupAddressesPage = () => {
   );
 
   const confirmDelete = useCallback(
-    (record: PickupAddressType) => {
+    (record: PaymentChannelType) => {
       modals.openConfirmModal({
-        title: "Delete pickup address?",
+        title: "Delete payment channel?",
         centered: true,
         children: (
           <Text size="sm">
-            This removes {formatAddress(record.pickup_address)} from checkout pickup options and the
-            admin list.
+            This removes {record.payment_channel_provider_name} from payment options and the admin
+            list.
           </Text>
         ),
-        labels: { confirm: "Delete", cancel: "Keep address" },
+        labels: { confirm: "Delete", cancel: "Keep Channel" },
         confirmProps: { color: "red" },
         onConfirm: () => handleDelete(record),
       });
@@ -347,51 +329,60 @@ const PickupAddressesPage = () => {
     [handleDelete],
   );
 
-  const columns = useMemo<DataTableColumn<PickupAddressType>[]>(
+  const columns = useMemo<DataTableColumn<PaymentChannelType>[]>(
     () => [
       {
-        accessor: "address",
-        title: "Address",
-        render: (record) => (
-          <Box>
-            <Text fw={800}>{record.pickup_address.address_street}</Text>
-            <Text size="xs" c="dimmed">
-              {[
-                record.pickup_address.address_barangay,
-                record.pickup_address.address_city,
-                record.pickup_address.address_province,
-                record.pickup_address.address_region,
-                record.pickup_address.address_postal_code,
-              ]
-                .filter(Boolean)
-                .join(", ")}
-            </Text>
-          </Box>
+        accessor: "payment_channel_account_identifier",
+        title: "Account Identifier",
+        render: ({ payment_channel_account_identifier }) => (
+          <Text fw={800}>{payment_channel_account_identifier}</Text>
         ),
       },
       {
-        accessor: "map",
-        title: "Google Map Link",
-        render: (record) => (
-          <Anchor href={getMapLink(record)} target="_blank" rel="noopener noreferrer" size="sm">
-            <Group gap={4} wrap="nowrap">
-              <IconExternalLink size={14} /> Open map
-            </Group>
-          </Anchor>
-        ),
-      },
-      {
-        accessor: "pickup_address_date_created",
+        accessor: "payment_channel_date_created",
         title: "Date Created",
         sortable: true,
-        render: (record) => formatDate(new Date(record.pickup_address_date_created)),
+        render: ({ payment_channel_date_created }) =>
+          formatDate(new Date(payment_channel_date_created)),
       },
       {
-        accessor: "status",
+        accessor: "payment_channel_provider_name",
+        title: "Provider",
+        render: ({ payment_channel_provider_name }) => (
+          <Text fw={800}>{payment_channel_provider_name}</Text>
+        ),
+      },
+      {
+        accessor: "payment_channel_account_name",
+        title: "Account Name",
+        render: ({ payment_channel_account_name }) => (
+          <Text fw={800}>{payment_channel_account_name}</Text>
+        ),
+      },
+      {
+        accessor: "payment_channel_qr_code_attachment",
+        title: "QR Code",
+        textAlign: "center",
+        render: ({ payment_channel_qr_code_attachment }) => (
+          <Button
+            component="a"
+            href={payment_channel_qr_code_attachment.attachment_path}
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="light"
+            size="xs"
+            leftSection={<IconQrcode size={16} />}
+          >
+            View QR
+          </Button>
+        ),
+      },
+      {
+        accessor: "payment_channel_is_available",
         title: "Status",
         textAlign: "center",
-        render: (record) => {
-          const { label, color } = getAvailabilityProps(record.pickup_address_is_available);
+        render: ({ payment_channel_is_available }) => {
+          const { label, color } = getAvailabilityProps(payment_channel_is_available);
           return (
             <Badge color={color} variant="light">
               {label}
@@ -403,58 +394,55 @@ const PickupAddressesPage = () => {
         accessor: "actions",
         title: "Actions",
         textAlign: "center",
-        render: (record) => {
-          const formattedAddress = formatAddress(record.pickup_address);
-          return (
-            <Group gap={4} wrap="nowrap" justify="center">
-              <Tooltip label="Edit">
-                <ActionIcon
-                  variant="subtle"
-                  aria-label={`Edit ${formattedAddress}`}
-                  onClick={() => openEditModal(record)}
-                >
-                  <IconPencil size={16} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label={record.pickup_address_is_available ? "Disable" : "Enable"}>
-                <ActionIcon
-                  variant="subtle"
-                  color={record.pickup_address_is_available ? "yellow" : "green"}
-                  loading={
-                    loadingRow?.id === record.pickup_address_id && loadingRow.action === "disable"
-                  }
-                  disabled={loadingRow !== null && loadingRow.id !== record.pickup_address_id}
-                  aria-label={
-                    record.pickup_address_is_available
-                      ? `Disable ${formattedAddress}`
-                      : `Enable ${formattedAddress}`
-                  }
-                  onClick={() => confirmAvailabilityChange(record)}
-                >
-                  {record.pickup_address_is_available ? (
-                    <IconPlayerPause size={16} />
-                  ) : (
-                    <IconPlayerPlay size={16} />
-                  )}
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Delete">
-                <ActionIcon
-                  variant="subtle"
-                  color="red"
-                  loading={
-                    loadingRow?.id === record.pickup_address_id && loadingRow.action === "delete"
-                  }
-                  disabled={loadingRow !== null && loadingRow.id !== record.pickup_address_id}
-                  aria-label={`Delete ${formattedAddress}`}
-                  onClick={() => confirmDelete(record)}
-                >
-                  <IconTrash size={16} />
-                </ActionIcon>
-              </Tooltip>
-            </Group>
-          );
-        },
+        render: (record) => (
+          <Group gap={4} wrap="nowrap" justify="center">
+            <Tooltip label="Edit">
+              <ActionIcon
+                variant="subtle"
+                aria-label={`Edit ${record.payment_channel_provider_name}`}
+                onClick={() => openEditModal(record)}
+              >
+                <IconPencil size={16} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label={record.payment_channel_is_available ? "Disable" : "Enable"}>
+              <ActionIcon
+                variant="subtle"
+                color={record.payment_channel_is_available ? "yellow" : "green"}
+                loading={
+                  loadingRow?.id === record.payment_channel_id && loadingRow.action === "disable"
+                }
+                disabled={loadingRow !== null && loadingRow.id !== record.payment_channel_id}
+                aria-label={
+                  record.payment_channel_is_available
+                    ? `Disable ${record.payment_channel_provider_name}`
+                    : `Enable ${record.payment_channel_provider_name}`
+                }
+                onClick={() => confirmAvailabilityChange(record)}
+              >
+                {record.payment_channel_is_available ? (
+                  <IconPlayerPause size={16} />
+                ) : (
+                  <IconPlayerPlay size={16} />
+                )}
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="Delete">
+              <ActionIcon
+                variant="subtle"
+                color="red"
+                loading={
+                  loadingRow?.id === record.payment_channel_id && loadingRow.action === "delete"
+                }
+                disabled={loadingRow !== null && loadingRow.id !== record.payment_channel_id}
+                aria-label={`Delete ${record.payment_channel_id}`}
+                onClick={() => confirmDelete(record)}
+              >
+                <IconTrash size={16} />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
+        ),
       },
     ],
     [confirmAvailabilityChange, confirmDelete, loadingRow, openEditModal],
@@ -473,11 +461,9 @@ const PickupAddressesPage = () => {
             Settings
           </Text>
           <Title order={1} style={{ fontSize: rem(34), fontWeight: 800 }}>
-            Pickup Addresses
+            Payment Channels
           </Title>
-          <Text c="dimmed">
-            Manage customer pickup locations, map pins, and checkout availability.
-          </Text>
+          <Text c="dimmed">Manage payment channel, accounts, and payment availability.</Text>
         </Stack>
 
         <Paper withBorder p="md" radius="md">
@@ -488,7 +474,7 @@ const PickupAddressesPage = () => {
                   <IconMapPin size={18} />
                 </ThemeIcon>
                 <Title order={2} size="h3">
-                  Address List
+                  Channel List
                 </Title>
               </Group>
               <Text size="sm" c="dimmed" mt={4}>
@@ -496,7 +482,7 @@ const PickupAddressesPage = () => {
               </Text>
             </Box>
             <Button leftSection={<IconPlus size={16} />} onClick={openCreateModal}>
-              Add Address
+              Add Channel
             </Button>
           </Group>
 
@@ -504,7 +490,7 @@ const PickupAddressesPage = () => {
             <TextInput
               w={{ base: "100%", md: 340 }}
               leftSection={<IconSearch size={16} />}
-              placeholder="Search address"
+              placeholder="Search payment channel"
               label="Search"
               value={searchInput}
               onChange={(event) => setSearchInput(event.currentTarget.value)}
@@ -519,14 +505,14 @@ const PickupAddressesPage = () => {
               onChange={(value) => setStatus(value ?? "null")}
             />
             <TableColumnVisibility
-              columns={pickupAddressColumnOptions}
+              columns={paymentChannelColumnOptions}
               visibleColumns={visibleColumns}
               onChange={setVisibleColumns}
             />
           </Group>
 
           <DataTable
-            idAccessor="pickup_address_id"
+            idAccessor="payment_channel_id"
             withTableBorder
             borderRadius="md"
             minHeight={420}
@@ -541,14 +527,14 @@ const PickupAddressesPage = () => {
             onRecordsPerPageChange={handleRecordsPerPageChange}
             sortStatus={sortStatus}
             onSortStatusChange={handleSortStatusChange}
-            noRecordsText="No pickup addresses found"
+            noRecordsText="No payment channel found"
             scrollAreaProps={{ type: "auto" }}
             columns={visibleTableColumns}
           />
         </Paper>
       </Stack>
 
-      <PickupAddressModal
+      <PaymentChannelsModal
         opened={opened}
         setOpened={setOpened}
         defaultValues={values}
@@ -558,4 +544,4 @@ const PickupAddressesPage = () => {
   );
 };
 
-export default PickupAddressesPage;
+export default PaymentChannelsPage;

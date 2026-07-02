@@ -61,7 +61,7 @@ export const getPaymentChannelList = async (supabaseClient: SupabaseClient<Datab
       `,
     )
     .eq("payment_channel_is_disabled", false)
-    .eq("payment_channel_is_active", true)
+    .eq("payment_channel_is_available", true)
     .order("payment_channel_provider_name", { ascending: true });
   if (error) throw error;
   return data;
