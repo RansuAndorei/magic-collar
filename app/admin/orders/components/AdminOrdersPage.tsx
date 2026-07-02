@@ -236,6 +236,7 @@ const AdminOrdersPage = () => {
       {
         accessor: "fulfillment",
         title: "Fulfillment",
+        textAlign: "center",
         render: (order) => (
           <Badge color={order.order_fulfillment === "DELIVERY" ? "blue" : "grape"} variant="light">
             {formatStatusLabel(order.order_fulfillment)}

@@ -192,21 +192,21 @@ const PaymentChannelsPage = () => {
       if (!userData) return;
       setLoadingRow({ id: record.payment_channel_id, action: "disable" });
 
-      if (record.payment_channel_is_available) {
-        const isSafe = await checkPaymentChannelCount(supabaseClient, {
-          paymentChannelId: record.payment_channel_id,
-        });
-        if (!isSafe) {
-          notifications.show({
-            color: "orange",
-            message:
-              "At least one payment channel is required. Please add an available payment channel before proceeding.",
-          });
-          setLoadingRow(null);
-          return;
-        }
-      }
       try {
+        if (record.payment_channel_is_available) {
+          const isSafe = await checkPaymentChannelCount(supabaseClient, {
+            paymentChannelId: record.payment_channel_id,
+          });
+          if (!isSafe) {
+            notifications.show({
+              color: "orange",
+              message:
+                "At least one payment channel is required. Please add an available payment channel before proceeding.",
+            });
+            setLoadingRow(null);
+            return;
+          }
+        }
         await setPaymentChannelAvailability(supabaseClient, {
           paymentChannelId: record.payment_channel_id,
           isAvailable: !record.payment_channel_is_available,

@@ -2157,3 +2157,127 @@ BEGIN
   WHERE payment_channel_id = input_payment_channel_id;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_admin_couriers_page(input_data JSONB)
+RETURNS JSONB
+AS $$
+DECLARE
+  input_page INT := COALESCE((input_data->>'page')::INT, 1);
+  input_records_per_page INT := COALESCE((input_data->>'recordsPerPage')::INT, 10);
+  input_search TEXT := COALESCE(NULLIF(TRIM(input_data->>'search'), ''), '');
+  input_status BOOLEAN := (input_data->>'status')::BOOLEAN;
+  input_sort_column TEXT := COALESCE(input_data->>'sortColumnAccessor', 'courier_date_created');
+  input_sort_direction TEXT := COALESCE(input_data->>'sortDirection', 'desc');
+
+  var_ascending BOOLEAN := (input_sort_direction = 'asc');
+  var_offset_count INT := (input_page - 1) * input_records_per_page;
+  var_total_records INT;
+  var_records JSONB;
+
+  return_data JSONB;
+BEGIN
+  SELECT COUNT(*)
+  INTO var_total_records
+  FROM courier_table
+  WHERE courier_is_disabled = false
+    AND (input_status IS NULL OR courier_is_available = input_status)
+    AND (input_search = '' OR LOWER(courier_name) LIKE '%' || LOWER(input_search) || '%');
+
+  SELECT COALESCE(JSONB_AGG(courier_data), '[]'::JSONB)
+  INTO var_records
+  FROM (
+    SELECT *
+    FROM courier_table
+    WHERE courier_is_disabled = false
+      AND (input_status IS NULL OR courier_is_available = input_status)
+      AND (input_search = '' OR LOWER(courier_name) LIKE '%' || LOWER(input_search) || '%')
+    ORDER BY
+      CASE WHEN input_sort_column = 'courier_date_created' AND var_ascending
+        THEN courier_date_created END ASC NULLS LAST,
+      CASE WHEN input_sort_column = 'courier_date_created' AND NOT var_ascending
+        THEN courier_date_created END DESC NULLS LAST
+    LIMIT input_records_per_page OFFSET var_offset_count
+  ) courier_data;
+
+  return_data := JSONB_BUILD_OBJECT(
+    'records', var_records,
+    'totalRecords', var_total_records
+  );
+
+  RETURN return_data;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION create_courier(input_data JSONB)
+RETURNS JSONB
+AS $$
+DECLARE
+  var_courier_id UUID;
+BEGIN
+  INSERT INTO courier_table (
+    courier_name,
+    courier_is_available,
+    courier_created_by_admin_user_id
+  )
+  VALUES (
+    input_data->'courierInsert'->>'courier_name',
+    COALESCE((input_data->'courierInsert'->>'courier_is_available')::BOOLEAN, true),
+    (input_data->'courierInsert'->>'courier_created_by_admin_user_id')::UUID
+  )
+  RETURNING courier_id INTO var_courier_id;
+
+  RETURN JSONB_BUILD_OBJECT('courierId', var_courier_id);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION update_courier(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_courier_id UUID := (input_data->>'courierId')::UUID;
+  patch JSONB := COALESCE(input_data->'courierUpdate', '{}'::JSONB);
+BEGIN
+  UPDATE courier_table
+  SET
+    courier_name = COALESCE(patch->>'courier_name', courier_name),
+    courier_is_available =
+      COALESCE((patch->>'courier_is_available')::BOOLEAN, courier_is_available),
+    courier_updated_by_admin_user_id =
+      COALESCE((patch->>'courier_updated_by_admin_user_id')::UUID, courier_updated_by_admin_user_id),
+    courier_date_updated = NOW()
+  WHERE courier_id = input_courier_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION set_courier_availability(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_courier_id UUID := (input_data->>'courierId')::UUID;
+  input_is_available BOOLEAN := (input_data->>'isAvailable')::BOOLEAN;
+  input_admin_user_id UUID := (input_data->>'adminUserId')::UUID;
+BEGIN
+  UPDATE courier_table
+  SET
+    courier_is_available = input_is_available,
+    courier_updated_by_admin_user_id = input_admin_user_id,
+    courier_date_updated = NOW()
+  WHERE courier_id = input_courier_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION delete_courier(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_courier_id UUID := (input_data->>'courierId')::UUID;
+  input_admin_user_id UUID := (input_data->>'adminUserId')::UUID;
+BEGIN
+  UPDATE courier_table
+  SET
+    courier_is_disabled = true,
+    courier_updated_by_admin_user_id = input_admin_user_id,
+    courier_date_updated = NOW()
+  WHERE courier_id = input_courier_id;
+END;
+$$ LANGUAGE plpgsql;

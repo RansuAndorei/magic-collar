@@ -244,6 +244,7 @@ export type AdminOrderSortAccessor =
   | "order_payment_status";
 export type AdminPickupAddressSortAccessor = "pickup_address_date_created";
 export type AdminPaymentChannelSortAccessor = "payment_channel_date_created";
+export type AdminCourierSortAccessor = "courier_date_created";
 
 export type AdminOrder = OrderTableRow & {
   order_user: UserTableRow;
@@ -346,4 +347,10 @@ export type AdminSortStatus<TAccessor extends string> = {
 export type ConnectedCarType = CarTableRow & {
   car_make: string;
   car_model: string;
+};
+
+export type CourierFormType = {
+  courierId?: string;
+  name: string;
+  isAvailable: boolean;
 };

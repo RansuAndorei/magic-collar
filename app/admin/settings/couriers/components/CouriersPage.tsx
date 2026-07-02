@@ -6,23 +6,16 @@ import TableColumnVisibility, {
 } from "@/app/admin/components/TableColumnVisibility";
 import { useUserData } from "@/stores/useUserStore";
 import { PAGINATION_OPTIONS, STATUS_OPTIONS, TEXT_LIMITS } from "@/utils/constants";
-import {
-  formatAddress,
-  formatDate,
-  getAvailabilityProps,
-  isAppError,
-  parseStatus,
-} from "@/utils/functions";
+import { formatDate, getAvailabilityProps, isAppError, parseStatus } from "@/utils/functions";
 import { supabaseClient } from "@/utils/supabase/client";
 import {
-  AdminPickupAddressSortAccessor,
+  AdminCourierSortAccessor,
   AdminSortStatus,
-  PickupAddressFormType,
-  PickupAddressType,
+  CourierFormType,
+  CourierTableRow,
 } from "@/utils/types";
 import {
   ActionIcon,
-  Anchor,
   Badge,
   Box,
   Button,
@@ -41,59 +34,43 @@ import { useDebouncedValue } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import {
-  IconExternalLink,
-  IconMapPin,
   IconPencil,
   IconPlayerPause,
   IconPlayerPlay,
   IconPlus,
   IconSearch,
   IconTrash,
+  IconTruckDelivery,
 } from "@tabler/icons-react";
 import { DataTable, DataTableColumn } from "mantine-datatable";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  checkPickupAddressCount,
-  deletePickupAddress,
-  getAdminPickupAddressesPage,
-  setPickupAddressAvailability,
+  checkCourierCount,
+  deleteCourier,
+  getAdminCouriersPage,
+  setCourierAvailability,
 } from "../actions";
-import PickupAddressModal from "./PickupAddressModal";
+import CouriersModal from "./CouriersModal";
 
-const emptyFormValues: PickupAddressFormType = {
-  street: "",
-  barangay: "",
-  barangayOptions: [],
-  city: "",
-  cityOptions: [],
-  province: "",
-  provinceOptions: [],
-  region: "",
-  regionOptions: [],
-  postalCode: "",
-  latitude: null,
-  longitude: null,
+const emptyFormValues: CourierFormType = {
+  name: "",
   isAvailable: true,
 };
 
-const pickupAddressColumnOptions: TableColumnVisibilityOption[] = [
-  { value: "address", label: "Address" },
-  { value: "map", label: "Google Map Link" },
-  { value: "pickup_address_date_created", label: "Date Created" },
+const courierColumnOptions: TableColumnVisibilityOption[] = [
+  { value: "courier_name", label: "Courier" },
+  { value: "courier_date_created", label: "Date Created" },
   { value: "status", label: "Status" },
   { value: "actions", label: "Actions" },
 ];
 
-const getMapLink = (record: PickupAddressType) =>
-  `https://www.google.com/maps?q=${record.pickup_address_latitude},${record.pickup_address_longitude}`;
-
-const PickupAddressesPage = () => {
+const CouriersPage = () => {
   const userData = useUserData();
   const pathname = usePathname();
   const router = useRouter();
 
-  const [records, setRecords] = useState<PickupAddressType[]>([]);
+  const [records, setRecords] = useState<CourierTableRow[]>([]);
   const [totalRecords, setTotalRecords] = useState(0);
   const [searchInput, setSearchInput] = useState("");
   const [search] = useDebouncedValue(searchInput, 400);
@@ -104,25 +81,25 @@ const PickupAddressesPage = () => {
   const [loadingRow, setLoadingRow] = useState<{ id: string; action: "disable" | "delete" } | null>(
     null,
   );
-  const [sortStatus, setSortStatus] = useState<AdminSortStatus<AdminPickupAddressSortAccessor>>({
-    columnAccessor: "pickup_address_date_created",
+  const [sortStatus, setSortStatus] = useState<AdminSortStatus<AdminCourierSortAccessor>>({
+    columnAccessor: "courier_date_created",
     direction: "desc",
   });
   const [opened, setOpened] = useState(false);
-  const [values, setValues] = useState<PickupAddressFormType>(emptyFormValues);
+  const [values, setValues] = useState<CourierFormType>(emptyFormValues);
   const [visibleColumns, setVisibleColumns] = useState(
-    pickupAddressColumnOptions.map((column) => column.value),
+    courierColumnOptions.map((column) => column.value),
   );
 
   useEffect(() => {
     setPage(1);
   }, [search, status]);
 
-  const loadPickupAddresses = useCallback(async () => {
+  const loadCouriers = useCallback(async () => {
     if (!userData) return;
     setFetching(true);
     try {
-      const result = await getAdminPickupAddressesPage(supabaseClient, {
+      const result = await getAdminCouriersPage(supabaseClient, {
         page,
         recordsPerPage,
         search: search.toLocaleLowerCase(),
@@ -142,7 +119,7 @@ const PickupAddressesPage = () => {
           errorTableInsert: {
             error_message: e.message,
             error_url: pathname,
-            error_function: "loadPickupAddresses",
+            error_function: "loadCouriers",
             error_user_email: userData.email,
             error_user_id: userData.id,
           },
@@ -154,13 +131,13 @@ const PickupAddressesPage = () => {
   }, [page, pathname, recordsPerPage, search, sortStatus, status, userData]);
 
   useEffect(() => {
-    loadPickupAddresses();
-  }, [loadPickupAddresses]);
+    loadCouriers();
+  }, [loadCouriers]);
 
   const refreshTable = useCallback(() => {
-    loadPickupAddresses();
+    loadCouriers();
     router.refresh();
-  }, [loadPickupAddresses, router]);
+  }, [loadCouriers, router]);
 
   const handleRecordsPerPageChange = useCallback((value: number) => {
     setRecordsPerPage(value);
@@ -169,9 +146,13 @@ const PickupAddressesPage = () => {
 
   const handleSortStatusChange = useCallback(
     (nextSortStatus: { columnAccessor: string; direction: "asc" | "desc" }) => {
-      if (nextSortStatus.columnAccessor !== "pickup_address_date_created") return;
+      if (
+        nextSortStatus.columnAccessor !== "courier_date_created" &&
+        nextSortStatus.columnAccessor !== "courier_name"
+      )
+        return;
       setSortStatus({
-        columnAccessor: "pickup_address_date_created",
+        columnAccessor: nextSortStatus.columnAccessor as AdminCourierSortAccessor,
         direction: nextSortStatus.direction,
       });
       setPage(1);
@@ -184,54 +165,41 @@ const PickupAddressesPage = () => {
     setOpened(true);
   }, []);
 
-  const openEditModal = useCallback((record: PickupAddressType) => {
+  const openEditModal = useCallback((record: CourierTableRow) => {
     setValues({
-      pickupAddressId: record.pickup_address_id,
-      addressId: record.pickup_address.address_id,
-      street: record.pickup_address.address_street,
-      barangay: record.pickup_address.address_barangay,
-      barangayOptions: [],
-      city: record.pickup_address.address_city,
-      cityOptions: [],
-      province: record.pickup_address.address_province,
-      provinceOptions: [],
-      region: record.pickup_address.address_region,
-      regionOptions: [],
-      postalCode: record.pickup_address.address_postal_code,
-      latitude: record.pickup_address_latitude,
-      longitude: record.pickup_address_longitude,
-      isAvailable: record.pickup_address_is_available,
+      courierId: record.courier_id,
+      name: record.courier_name,
+      isAvailable: record.courier_is_available,
     });
     setOpened(true);
   }, []);
 
   const handleAvailabilityChange = useCallback(
-    async (record: PickupAddressType) => {
+    async (record: CourierTableRow) => {
       if (!userData) return;
-      setLoadingRow({ id: record.pickup_address_id, action: "disable" });
-
+      setLoadingRow({ id: record.courier_id, action: "disable" });
       try {
-        if (record.pickup_address_is_available) {
-          const isSafe = await checkPickupAddressCount(supabaseClient, {
-            pickupAddressId: record.pickup_address_id,
+        if (record.courier_is_available) {
+          const isSafe = await checkCourierCount(supabaseClient, {
+            courierId: record.courier_id,
           });
           if (!isSafe) {
             notifications.show({
               color: "orange",
               message:
-                "At least one pickup address is required. Please add an available pickup address before proceeding.",
+                "At least one courier is required. Please add an available courier before proceeding.",
             });
             setLoadingRow(null);
             return;
           }
         }
-        await setPickupAddressAvailability(supabaseClient, {
-          pickupAddressId: record.pickup_address_id,
-          isAvailable: !record.pickup_address_is_available,
+        await setCourierAvailability(supabaseClient, {
+          courierId: record.courier_id,
+          isAvailable: !record.courier_is_available,
           adminUserId: userData.id,
         });
         notifications.show({
-          message: "Pickup address availability updated successfully.",
+          message: "Courier availability updated successfully.",
           color: "green",
         });
         refreshTable();
@@ -259,22 +227,19 @@ const PickupAddressesPage = () => {
   );
 
   const confirmAvailabilityChange = useCallback(
-    (record: PickupAddressType) => {
+    (record: CourierTableRow) => {
       modals.openConfirmModal({
-        title: `${record.pickup_address_is_available ? "Disable" : "Enable"} pickup address?`,
+        title: `${record.courier_is_available ? "Disable" : "Enable"} courier?`,
         centered: true,
         children: (
           <Text size="sm">
-            {record.pickup_address_is_available
-              ? "Customers will no longer be able to choose this pickup address during checkout."
-              : "Customers will be able to choose this pickup address during checkout."}
+            {record.courier_is_available
+              ? "This courier will no longer be available for selection."
+              : "This courier will become available for selection."}
           </Text>
         ),
-        labels: {
-          confirm: record.pickup_address_is_available ? "Disable" : "Enable",
-          cancel: "Cancel",
-        },
-        confirmProps: { color: record.pickup_address_is_available ? "yellow" : "green" },
+        labels: { confirm: record.courier_is_available ? "Disable" : "Enable", cancel: "Cancel" },
+        confirmProps: { color: record.courier_is_available ? "yellow" : "green" },
         onConfirm: () => handleAvailabilityChange(record),
       });
     },
@@ -282,28 +247,28 @@ const PickupAddressesPage = () => {
   );
 
   const handleDelete = useCallback(
-    async (record: PickupAddressType) => {
+    async (record: CourierTableRow) => {
       if (!userData) return;
-      setLoadingRow({ id: record.pickup_address_id, action: "delete" });
+      setLoadingRow({ id: record.courier_id, action: "delete" });
       try {
-        const isSafe = await checkPickupAddressCount(supabaseClient, {
-          pickupAddressId: record.pickup_address_id,
+        const isSafe = await checkCourierCount(supabaseClient, {
+          courierId: record.courier_id,
         });
         if (!isSafe) {
           notifications.show({
             color: "orange",
             message:
-              "At least one pickup address is required. Please add an available pickup address before proceeding.",
+              "At least one courier is required. Please add an available courier before proceeding.",
           });
           setLoadingRow(null);
           return;
         }
 
-        await deletePickupAddress(supabaseClient, {
-          pickupAddressId: record.pickup_address_id,
+        await deleteCourier(supabaseClient, {
+          courierId: record.courier_id,
           adminUserId: userData.id,
         });
-        notifications.show({ message: "Pickup address deleted successfully.", color: "green" });
+        notifications.show({ message: "Courier deleted successfully.", color: "green" });
         refreshTable();
       } catch (e) {
         notifications.show({
@@ -315,7 +280,7 @@ const PickupAddressesPage = () => {
             errorTableInsert: {
               error_message: e.message,
               error_url: pathname,
-              error_function: "deletePickupAddress",
+              error_function: "deleteCourier",
               error_user_email: userData.email,
               error_user_id: userData.id,
             },
@@ -329,17 +294,12 @@ const PickupAddressesPage = () => {
   );
 
   const confirmDelete = useCallback(
-    (record: PickupAddressType) => {
+    (record: CourierTableRow) => {
       modals.openConfirmModal({
-        title: "Delete pickup address?",
+        title: "Delete courier?",
         centered: true,
-        children: (
-          <Text size="sm">
-            This removes {formatAddress(record.pickup_address)} from checkout pickup options and the
-            admin list.
-          </Text>
-        ),
-        labels: { confirm: "Delete", cancel: "Keep address" },
+        children: <Text size="sm">This removes {record.courier_name} from the courier list.</Text>,
+        labels: { confirm: "Delete", cancel: "Keep courier" },
         confirmProps: { color: "red" },
         onConfirm: () => handleDelete(record),
       });
@@ -347,51 +307,26 @@ const PickupAddressesPage = () => {
     [handleDelete],
   );
 
-  const columns = useMemo<DataTableColumn<PickupAddressType>[]>(
+  const columns = useMemo<DataTableColumn<CourierTableRow>[]>(
     () => [
       {
-        accessor: "address",
-        title: "Address",
-        render: (record) => (
-          <Box>
-            <Text fw={800}>{record.pickup_address.address_street}</Text>
-            <Text size="xs" c="dimmed">
-              {[
-                record.pickup_address.address_barangay,
-                record.pickup_address.address_city,
-                record.pickup_address.address_province,
-                record.pickup_address.address_region,
-                record.pickup_address.address_postal_code,
-              ]
-                .filter(Boolean)
-                .join(", ")}
-            </Text>
-          </Box>
-        ),
+        accessor: "courier_name",
+        title: "Courier",
+        sortable: true,
+        render: (record) => <Text fw={800}>{record.courier_name}</Text>,
       },
       {
-        accessor: "map",
-        title: "Google Map Link",
-        render: (record) => (
-          <Anchor href={getMapLink(record)} target="_blank" rel="noopener noreferrer" size="sm">
-            <Group gap={4} wrap="nowrap">
-              <IconExternalLink size={14} /> Open map
-            </Group>
-          </Anchor>
-        ),
-      },
-      {
-        accessor: "pickup_address_date_created",
+        accessor: "courier_date_created",
         title: "Date Created",
         sortable: true,
-        render: (record) => formatDate(new Date(record.pickup_address_date_created)),
+        render: (record) => formatDate(new Date(record.courier_date_created)),
       },
       {
         accessor: "status",
         title: "Status",
         textAlign: "center",
         render: (record) => {
-          const { label, color } = getAvailabilityProps(record.pickup_address_is_available);
+          const { label, color } = getAvailabilityProps(record.courier_is_available);
           return (
             <Badge color={color} variant="light">
               {label}
@@ -403,58 +338,51 @@ const PickupAddressesPage = () => {
         accessor: "actions",
         title: "Actions",
         textAlign: "center",
-        render: (record) => {
-          const formattedAddress = formatAddress(record.pickup_address);
-          return (
-            <Group gap={4} wrap="nowrap" justify="center">
-              <Tooltip label="Edit">
-                <ActionIcon
-                  variant="subtle"
-                  aria-label={`Edit ${formattedAddress}`}
-                  onClick={() => openEditModal(record)}
-                >
-                  <IconPencil size={16} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label={record.pickup_address_is_available ? "Disable" : "Enable"}>
-                <ActionIcon
-                  variant="subtle"
-                  color={record.pickup_address_is_available ? "yellow" : "green"}
-                  loading={
-                    loadingRow?.id === record.pickup_address_id && loadingRow.action === "disable"
-                  }
-                  disabled={loadingRow !== null && loadingRow.id !== record.pickup_address_id}
-                  aria-label={
-                    record.pickup_address_is_available
-                      ? `Disable ${formattedAddress}`
-                      : `Enable ${formattedAddress}`
-                  }
-                  onClick={() => confirmAvailabilityChange(record)}
-                >
-                  {record.pickup_address_is_available ? (
-                    <IconPlayerPause size={16} />
-                  ) : (
-                    <IconPlayerPlay size={16} />
-                  )}
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Delete">
-                <ActionIcon
-                  variant="subtle"
-                  color="red"
-                  loading={
-                    loadingRow?.id === record.pickup_address_id && loadingRow.action === "delete"
-                  }
-                  disabled={loadingRow !== null && loadingRow.id !== record.pickup_address_id}
-                  aria-label={`Delete ${formattedAddress}`}
-                  onClick={() => confirmDelete(record)}
-                >
-                  <IconTrash size={16} />
-                </ActionIcon>
-              </Tooltip>
-            </Group>
-          );
-        },
+        render: (record) => (
+          <Group gap={4} wrap="nowrap" justify="center">
+            <Tooltip label="Edit">
+              <ActionIcon
+                variant="subtle"
+                aria-label={`Edit ${record.courier_name}`}
+                onClick={() => openEditModal(record)}
+              >
+                <IconPencil size={16} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label={record.courier_is_available ? "Disable" : "Enable"}>
+              <ActionIcon
+                variant="subtle"
+                color={record.courier_is_available ? "yellow" : "green"}
+                loading={loadingRow?.id === record.courier_id && loadingRow.action === "disable"}
+                disabled={loadingRow !== null && loadingRow.id !== record.courier_id}
+                aria-label={
+                  record.courier_is_available
+                    ? `Disable ${record.courier_name}`
+                    : `Enable ${record.courier_name}`
+                }
+                onClick={() => confirmAvailabilityChange(record)}
+              >
+                {record.courier_is_available ? (
+                  <IconPlayerPause size={16} />
+                ) : (
+                  <IconPlayerPlay size={16} />
+                )}
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="Delete">
+              <ActionIcon
+                variant="subtle"
+                color="red"
+                loading={loadingRow?.id === record.courier_id && loadingRow.action === "delete"}
+                disabled={loadingRow !== null && loadingRow.id !== record.courier_id}
+                aria-label={`Delete ${record.courier_name}`}
+                onClick={() => confirmDelete(record)}
+              >
+                <IconTrash size={16} />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
+        ),
       },
     ],
     [confirmAvailabilityChange, confirmDelete, loadingRow, openEditModal],
@@ -473,10 +401,10 @@ const PickupAddressesPage = () => {
             Settings
           </Text>
           <Title order={1} style={{ fontSize: rem(34), fontWeight: 800 }}>
-            Pickup Addresses
+            Couriers
           </Title>
           <Text c="dimmed">
-            Manage customer pickup locations, map pins, and checkout availability.
+            Manage courier partners and their availability for order fulfillment.
           </Text>
         </Stack>
 
@@ -485,10 +413,10 @@ const PickupAddressesPage = () => {
             <Box>
               <Group gap="xs">
                 <ThemeIcon color="red" variant="light" radius="md">
-                  <IconMapPin size={18} />
+                  <IconTruckDelivery size={18} />
                 </ThemeIcon>
                 <Title order={2} size="h3">
-                  Address List
+                  Courier List
                 </Title>
               </Group>
               <Text size="sm" c="dimmed" mt={4}>
@@ -496,7 +424,7 @@ const PickupAddressesPage = () => {
               </Text>
             </Box>
             <Button leftSection={<IconPlus size={16} />} onClick={openCreateModal}>
-              Add Address
+              Add Courier
             </Button>
           </Group>
 
@@ -504,7 +432,7 @@ const PickupAddressesPage = () => {
             <TextInput
               w={{ base: "100%", md: 340 }}
               leftSection={<IconSearch size={16} />}
-              placeholder="Search address"
+              placeholder="Search courier"
               label="Search"
               value={searchInput}
               onChange={(event) => setSearchInput(event.currentTarget.value)}
@@ -519,14 +447,14 @@ const PickupAddressesPage = () => {
               onChange={(value) => setStatus(value ?? "null")}
             />
             <TableColumnVisibility
-              columns={pickupAddressColumnOptions}
+              columns={courierColumnOptions}
               visibleColumns={visibleColumns}
               onChange={setVisibleColumns}
             />
           </Group>
 
           <DataTable
-            idAccessor="pickup_address_id"
+            idAccessor="courier_id"
             withTableBorder
             borderRadius="md"
             minHeight={420}
@@ -541,14 +469,14 @@ const PickupAddressesPage = () => {
             onRecordsPerPageChange={handleRecordsPerPageChange}
             sortStatus={sortStatus}
             onSortStatusChange={handleSortStatusChange}
-            noRecordsText="No pickup addresses found"
+            noRecordsText="No couriers found"
             scrollAreaProps={{ type: "auto" }}
             columns={visibleTableColumns}
           />
         </Paper>
       </Stack>
 
-      <PickupAddressModal
+      <CouriersModal
         opened={opened}
         setOpened={setOpened}
         defaultValues={values}
@@ -558,4 +486,4 @@ const PickupAddressesPage = () => {
   );
 };
 
-export default PickupAddressesPage;
+export default CouriersPage;
