@@ -1,6 +1,9 @@
 import { insertError } from "@/app/actions";
+import TableColumnVisibility, {
+  TableColumnVisibilityOption,
+} from "@/app/admin/components/TableColumnVisibility";
 import { useUserData } from "@/stores/useUserStore";
-import { PAGINATION_OPTIONS, STATUS_OPTIONS } from "@/utils/constants";
+import { PAGINATION_OPTIONS, STATUS_OPTIONS, TEXT_LIMITS } from "@/utils/constants";
 import {
   formatCurrency,
   formatDate,
@@ -51,6 +54,16 @@ const emptyFormValues = {
   stockQuantity: 0,
 };
 
+const orderColumnOptions: TableColumnVisibilityOption[] = [
+  { value: "magic_collar_reference_number", label: "Reference" },
+  { value: "magic_collar_date_created", label: "Date Created" },
+  { value: "set_contents", label: "Set" },
+  { value: "magic_collar_price", label: "Price" },
+  { value: "magic_collar_stock_quantity", label: "Stock" },
+  { value: "status", label: "Status" },
+  { value: "actions", label: "Actions" },
+];
+
 const MagicCollarList = () => {
   const userData = useUserData();
   const pathname = usePathname();
@@ -77,6 +90,9 @@ const MagicCollarList = () => {
   });
   const [opened, setOpened] = useState(false);
   const [values, setValues] = useState<MagicCollarFormType>(emptyFormValues);
+  const [visibleColumns, setVisibleColumns] = useState(
+    orderColumnOptions.map((column) => column.value),
+  );
 
   useEffect(() => {
     setMagicCollarPage(1);
@@ -463,9 +479,14 @@ const MagicCollarList = () => {
     [isMobile, loadingRow, openEditModal, confirmAvailabilityChange, confirmDelete],
   );
 
+  const visibleTableColumns = useMemo(
+    () => columns.filter((column) => visibleColumns.includes(String(column.accessor))),
+    [columns, visibleColumns],
+  );
+
   return (
     <>
-      <Group justify="space-between" mb="md" align="flex-end">
+      <Group justify="space-between" mb="md">
         <Group>
           <Box>
             <Title order={2} size="h3">
@@ -481,6 +502,7 @@ const MagicCollarList = () => {
             placeholder="Search make, model, code, or magic collar"
             value={magicCollarSearchInput}
             onChange={(event) => setMagicCollarSearchInput(event.currentTarget.value)}
+            maxLength={TEXT_LIMITS.medium}
           />
           <Select
             w={{ base: "100%", sm: 180 }}
@@ -488,6 +510,11 @@ const MagicCollarList = () => {
             value={magicCollarStatus}
             onChange={(value) => setMagicCollarStatus(value ?? "null")}
             allowDeselect={false}
+          />
+          <TableColumnVisibility
+            columns={orderColumnOptions}
+            visibleColumns={visibleColumns}
+            onChange={setVisibleColumns}
           />
         </Group>
         <Button rightSection={<IconPlus size={14} />} onClick={openCreateModal}>
@@ -502,7 +529,7 @@ const MagicCollarList = () => {
         page={magicCollarPage}
         fetching={isFetchingMagicCollars}
         sortStatus={magicCollarSortStatus}
-        columns={columns}
+        columns={visibleTableColumns}
         onPageChange={handlePageChange}
         onRecordsPerPageChange={handleRecordsPerPageChange}
         onSortStatusChange={handleSortStatusChange}

@@ -8,6 +8,7 @@ import {
   BATCH_STATUS_METADATA,
   BATCH_STATUS_OPTIONS,
   PAGINATION_OPTIONS,
+  TEXT_LIMITS,
 } from "@/utils/constants";
 import {
   formatCurrency,
@@ -46,6 +47,9 @@ import { DataTableColumn } from "mantine-datatable";
 import moment from "moment";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import TableColumnVisibility, {
+  TableColumnVisibilityOption,
+} from "../../components/TableColumnVisibility";
 import { getAdminBatchesPage, transitionBatchStatus } from "../actions";
 import AdminBatchTable from "./AdminBatchTable";
 
@@ -54,6 +58,15 @@ const sortableColumns = new Set<AdminBatchSortAccessor>([
   "batch_number",
   "batch_status",
 ]);
+
+const orderColumnOptions: TableColumnVisibilityOption[] = [
+  { value: "batch_number", label: "Batch" },
+  { value: "batch_status", label: "Status" },
+  { value: "quantity", label: "Quantity" },
+  { value: "progress", label: "Progress" },
+  { value: "value", label: "Batch Value" },
+  { value: "action", label: "Action" },
+];
 
 type Props = {
   batchLimit: number;
@@ -77,6 +90,9 @@ const AdminBatchesPage = ({ batchLimit }: Props) => {
     direction: "desc",
   });
   const [loadingRow, setLoadingRow] = useState<string | null>(null);
+  const [visibleColumns, setVisibleColumns] = useState(
+    orderColumnOptions.map((column) => column.value),
+  );
 
   useEffect(() => {
     setPage(1);
@@ -324,6 +340,11 @@ const AdminBatchesPage = ({ batchLimit }: Props) => {
     [],
   );
 
+  const visibleTableColumns = useMemo(
+    () => columns.filter((column) => visibleColumns.includes(String(column.accessor))),
+    [columns, visibleColumns],
+  );
+
   return (
     <Stack flex={1} gap="xl" miw={0}>
       <Stack gap={4}>
@@ -363,6 +384,7 @@ const AdminBatchesPage = ({ batchLimit }: Props) => {
             label="Search"
             value={searchInput}
             onChange={(event) => setSearchInput(event.currentTarget.value)}
+            maxLength={TEXT_LIMITS.medium}
           />
           <Select
             w={{ base: "100%", sm: 220 }}
@@ -371,6 +393,11 @@ const AdminBatchesPage = ({ batchLimit }: Props) => {
             label="Batch Status"
             allowDeselect={false}
             onChange={(value) => setBatchStatus((value as BatchStatusEnum | "ALL") ?? "ALL")}
+          />
+          <TableColumnVisibility
+            columns={orderColumnOptions}
+            visibleColumns={visibleColumns}
+            onChange={setVisibleColumns}
           />
         </Group>
 
@@ -382,7 +409,7 @@ const AdminBatchesPage = ({ batchLimit }: Props) => {
           page={page}
           fetching={fetching}
           sortStatus={sortStatus}
-          columns={columns}
+          columns={visibleTableColumns}
           onPageChange={setPage}
           onRecordsPerPageChange={handleRecordsPerPageChange}
           onSortStatusChange={handleSortStatusChange}

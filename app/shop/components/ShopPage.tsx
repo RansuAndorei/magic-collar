@@ -7,6 +7,7 @@ import {
   SHOP_PAGE_SIZE,
   SHOP_PREFERENCES_STORAGE_KEY,
   SHOP_SORT_OPTIONS,
+  TEXT_LIMITS,
   YEAR_OPTIONS,
 } from "@/utils/constants";
 import { getProductTitle, parseStoredCart } from "@/utils/functions";
@@ -471,6 +472,7 @@ const ShopPage = ({ makeList, modelList, carList }: Props) => {
                       </Box>
                     ) : null
                   }
+                  maxLength={TEXT_LIMITS.medium}
                 />
                 <Select
                   label="Sort by"
@@ -571,6 +573,7 @@ const ShopPage = ({ makeList, modelList, carList }: Props) => {
                       </Box>
                     ) : null
                   }
+                  maxLength={TEXT_LIMITS.medium}
                 />
                 <Button
                   variant={activeFilterCount > 0 ? "filled" : "default"}

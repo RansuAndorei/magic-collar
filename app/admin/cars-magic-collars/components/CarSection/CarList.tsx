@@ -3,7 +3,7 @@ import TableColumnVisibility, {
   TableColumnVisibilityOption,
 } from "@/app/admin/components/TableColumnVisibility";
 import { useUserData } from "@/stores/useUserStore";
-import { PAGINATION_OPTIONS, STATUS_OPTIONS } from "@/utils/constants";
+import { PAGINATION_OPTIONS, STATUS_OPTIONS, TEXT_LIMITS } from "@/utils/constants";
 import {
   formatCurrency,
   formatDate,
@@ -507,6 +507,7 @@ const CarList = ({ makeList, modelList }: Props) => {
             placeholder="Search make, model, code, or magic collar"
             value={carSearchInput}
             onChange={(event) => setCarSearchInput(event.currentTarget.value)}
+            maxLength={TEXT_LIMITS.medium}
           />
           <Select
             w={{ base: "100%", sm: 180 }}

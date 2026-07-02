@@ -8,6 +8,7 @@ import {
   PAYMONGO_PAYMENT_DATA,
 } from "./constants";
 import {
+  AddressTableRow,
   BatchStatusEnum,
   OrderItemStatusEnum,
   OrderPaymentRequestStatusEnum,
@@ -230,3 +231,15 @@ export const parseStatus = (value: string | null) => {
 };
 
 export type LoadingRowType = { id: string; action: "edit" | "disable" | "delete" } | null;
+
+export const formatAddress = (address: AddressTableRow) =>
+  [
+    address.address_street,
+    address.address_barangay,
+    address.address_city,
+    address.address_province,
+    address.address_region,
+    address.address_postal_code,
+  ]
+    .filter(Boolean)
+    .join(", ");

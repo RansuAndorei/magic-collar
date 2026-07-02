@@ -11,6 +11,7 @@ import {
   ORDER_STATUS_OPTIONS,
   PAGINATION_OPTIONS,
   PAYMENT_STATUS_OPTIONS,
+  TEXT_LIMITS,
 } from "@/utils/constants";
 import {
   formatCurrency,
@@ -312,6 +313,7 @@ const AdminOrdersPage = () => {
             label="Search"
             value={searchInput}
             onChange={(event) => setSearchInput(event.currentTarget.value)}
+            maxLength={TEXT_LIMITS.medium}
           />
           <Select
             w={{ base: "100%", sm: 180 }}

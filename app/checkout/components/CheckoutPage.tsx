@@ -11,6 +11,7 @@ import {
 } from "@/utils/constants";
 import {
   feeCalculator,
+  formatAddress,
   formatCurrency,
   formatPhilippineMobileNumber,
   getProductSubtitle,
@@ -63,18 +64,6 @@ type CheckoutCartItem = {
   product: CarShopType;
   quantity: number;
 };
-
-const formatAddress = (address: CheckoutAddressType) =>
-  [
-    address.delivery_detail_address.address_street,
-    address.delivery_detail_address.address_barangay,
-    address.delivery_detail_address.address_city,
-    address.delivery_detail_address.address_province,
-    address.delivery_detail_address.address_region,
-    address.delivery_detail_address.address_postal_code,
-  ]
-    .filter(Boolean)
-    .join(", ");
 
 const formatAddressSummary = (address: CheckoutAddressType) =>
   [
@@ -485,7 +474,7 @@ const CheckoutPage = ({ carList, checkoutAddressList, pickupAddressList, courier
                               )}
                             </Text>
                             <Text size="sm" mt={4}>
-                              {formatAddress(selectedDeliveryAddress)}
+                              {formatAddress(selectedDeliveryAddress.delivery_detail_address)}
                             </Text>
                           </Alert>
                         ) : (

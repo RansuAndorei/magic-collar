@@ -101,7 +101,7 @@ const AdminNavigationDrawer = ({ opened, onClose }: Props) => {
                       {group.label}
                     </Text>
                     {group.links.map(({ label, meta, icon: Icon, href }) => {
-                      const isActive = href ? pathname === href : false;
+                      const isActive = href ? pathname.startsWith(href) : false;
                       const content = (
                         <Group
                           gap="sm"

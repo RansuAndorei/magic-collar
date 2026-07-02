@@ -1714,3 +1714,246 @@ BEGIN
   WHERE order_id = var_order_id;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_admin_pickup_addresses_page(input_data JSONB)
+RETURNS JSONB
+AS $$
+DECLARE
+  input_page INT := COALESCE((input_data->>'page')::INT, 1);
+  input_records_per_page INT := COALESCE((input_data->>'recordsPerPage')::INT, 10);
+  input_search TEXT := COALESCE(NULLIF(TRIM(input_data->>'search'), ''), '');
+  input_status BOOLEAN := (input_data->>'status')::BOOLEAN;
+  input_sort_column TEXT := COALESCE(input_data->>'sortColumnAccessor', 'pickup_address_date_created');
+  input_sort_direction TEXT := COALESCE(input_data->>'sortDirection', 'desc');
+
+  var_ascending BOOLEAN := (input_sort_direction = 'asc');
+  var_offset_count INT := (input_page - 1) * input_records_per_page;
+  var_total_records INT;
+  var_records JSONB;
+
+  return_data JSONB;
+BEGIN
+  SELECT COUNT(*)
+  INTO var_total_records
+  FROM pickup_address_table
+  INNER JOIN address_table
+    ON address_id = pickup_address_address_id
+  WHERE pickup_address_is_disabled = false
+    AND (input_status IS NULL OR pickup_address_is_available = input_status)
+    AND (
+      input_search = '' OR
+      LOWER(
+        CONCAT_WS(', ',
+          address_street,
+          address_barangay,
+          address_city,
+          address_province,
+          address_region,
+          address_postal_code
+        )
+      ) LIKE '%' || LOWER(input_search) || '%'
+    );
+
+  SELECT COALESCE(JSONB_AGG(address_data), '[]'::JSONB)
+  FROM (
+    SELECT
+      pickup_address_table.*,
+      TO_JSONB(address_table.*) AS pickup_address
+    FROM pickup_address_table
+    INNER JOIN address_table
+      ON address_id = pickup_address_address_id
+    WHERE pickup_address_is_disabled = false
+      AND (input_status IS NULL OR pickup_address_is_available = input_status)
+      AND (
+        input_search = '' OR
+        LOWER(
+          CONCAT_WS(', ',
+            address_street,
+            address_barangay,
+            address_city,
+            address_province,
+            address_region,
+            address_postal_code
+          )
+        ) LIKE '%%' || LOWER(input_search) || '%%'
+      )
+    ORDER BY
+      CASE WHEN input_sort_column = 'pickup_address_date_created' AND var_ascending
+        THEN pickup_address_date_created END ASC,
+      CASE WHEN input_sort_column = 'pickup_address_date_created' AND NOT var_ascending
+        THEN pickup_address_date_created END DESC
+    LIMIT input_records_per_page OFFSET var_offset_count
+  ) address_data
+  INTO var_records;
+
+  return_data = JSON_BUILD_OBJECT(
+    'records', var_records,
+    'totalRecords', var_total_records
+  );
+
+  RETURN return_data;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION create_pickup_address(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_address_insert JSONB = (input_data->'addressInsert')::JSONB;
+  input_pickup_address_insert JSONB = (input_data->'pickupAddressInsert')::JSONB;
+
+  var_address_id UUID;
+BEGIN
+  INSERT INTO address_table (
+    address_street,
+    address_barangay,
+    address_city,
+    address_province,
+    address_region,
+    address_postal_code
+  )
+  VALUES (
+    input_address_insert->>'address_street',
+    input_address_insert->>'address_barangay',
+    input_address_insert->>'address_city',
+    input_address_insert->>'address_province',
+    input_address_insert->>'address_region',
+    input_address_insert->>'address_postal_code'
+  )
+  RETURNING address_id INTO var_address_id;
+
+  INSERT INTO pickup_address_table (
+    pickup_address_address_id,
+    pickup_address_latitude,
+    pickup_address_longitude,
+    pickup_address_is_available,
+    pickup_address_created_by_admin_user_id
+  )
+  VALUES (
+    var_address_id,
+    (input_pickup_address_insert->>'pickup_address_latitude')::NUMERIC,
+    (input_pickup_address_insert->>'pickup_address_longitude')::NUMERIC,
+    COALESCE((input_pickup_address_insert->>'pickup_address_is_available')::BOOLEAN, true),
+    (input_pickup_address_insert->>'pickup_address_created_by_admin_user_id')::UUID
+  );
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION update_pickup_address(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_pickup_address_id UUID := (input_data->>'pickupAddressId')::UUID;
+  input_address_id UUID := (input_data->>'addressId')::UUID;
+  input_address_patch JSONB := COALESCE(input_data->'addressUpdate', '{}'::JSONB);
+  input_pickup_address_patch JSONB := COALESCE(input_data->'pickupAddressUpdate', '{}'::JSONB);
+BEGIN
+  UPDATE address_table
+  SET
+    address_street = COALESCE(input_address_patch->>'address_street', address_street),
+    address_barangay = COALESCE(input_address_patch->>'address_barangay', address_barangay),
+    address_city = COALESCE(input_address_patch->>'address_city', address_city),
+    address_province = COALESCE(input_address_patch->>'address_province', address_province),
+    address_region = COALESCE(input_address_patch->>'address_region', address_region),
+    address_postal_code = COALESCE(input_address_patch->>'address_postal_code', address_postal_code)
+  WHERE address_id = input_address_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Address % not found', input_address_id;
+  END IF;
+
+  UPDATE pickup_address_table
+  SET
+    pickup_address_latitude =
+      COALESCE((input_pickup_address_patch->>'pickup_address_latitude')::NUMERIC, pickup_address_latitude),
+    pickup_address_longitude =
+      COALESCE((input_pickup_address_patch->>'pickup_address_longitude')::NUMERIC, pickup_address_longitude),
+    pickup_address_is_available =
+      COALESCE((input_pickup_address_patch->>'pickup_address_is_available')::BOOLEAN, pickup_address_is_available),
+    pickup_address_updated_by_admin_user_id =
+      COALESCE((input_pickup_address_patch->>'pickup_address_updated_by_admin_user_id')::UUID, pickup_address_updated_by_admin_user_id),
+    pickup_address_date_updated =
+      COALESCE((input_pickup_address_patch->>'pickup_address_date_updated')::TIMESTAMPTZ, NOW())
+  WHERE pickup_address_id = input_pickup_address_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_address_id_based_on_label(input_data JSONB)
+RETURNS JSONB
+AS $$
+DECLARE
+  input_region TEXT := input_data->>'region';
+  input_province TEXT := input_data->>'province';
+  input_city TEXT := input_data->>'city';
+  input_barangay TEXT := input_data->>'barangay';
+
+  var_region_id UUID;
+  var_province_id UUID;
+  var_city_id UUID;
+  var_barangay_id UUID;
+
+  return_data JSONB;
+BEGIN
+  SELECT region_id
+  INTO var_region_id
+  FROM region_table
+  WHERE region = input_region;
+
+  SELECT province_id
+  INTO var_province_id
+  FROM province_table
+  WHERE province = input_province;
+
+  SELECT city_id
+  INTO var_city_id
+  FROM city_table
+  WHERE city = input_city;
+
+  SELECT barangay_id
+  INTO var_barangay_id
+  FROM barangay_table
+  WHERE barangay = input_barangay;
+
+  return_data = JSONB_BUILD_OBJECT(
+    'regionId', COALESCE(var_region_id, NULL),
+    'provinceId', COALESCE(var_province_id, NULL),
+    'cityId', COALESCE(var_city_id, NULL),
+    'barangayId', COALESCE(var_barangay_id, NULL)
+  );
+  RETURN return_data;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION set_pickup_address_availability(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_pickup_address_id UUID := (input_data->>'pickupAddressId')::UUID;
+  input_is_available BOOLEAN := (input_data->>'isAvailable')::BOOLEAN;
+  input_admin_user_id UUID := (input_data->>'adminUserId')::UUID;
+BEGIN
+  UPDATE pickup_address_table
+  SET
+    pickup_address_is_available = input_is_available,
+    pickup_address_updated_by_admin_user_id = input_admin_user_id,
+    pickup_address_date_updated = NOW()
+  WHERE pickup_address_id = input_pickup_address_id;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION delete_pickup_address(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_pickup_address_id UUID := (input_data->>'pickupAddressId')::UUID;
+  input_admin_user_id UUID := (input_data->>'adminUserId')::UUID;
+BEGIN
+  UPDATE pickup_address_table
+  SET
+    pickup_address_is_disabled = true,
+    pickup_address_updated_by_admin_user_id = input_admin_user_id,
+    pickup_address_date_updated = NOW()
+  WHERE pickup_address_id = input_pickup_address_id;
+END;
+$$ LANGUAGE plpgsql;

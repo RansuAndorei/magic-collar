@@ -2,6 +2,7 @@ import {
   FULFILLMENT_OPTIONS,
   ORDER_STATUS_OPTIONS,
   PAYMENT_STATUS_OPTIONS,
+  TEXT_LIMITS,
 } from "@/utils/constants";
 import { OrderFulfillmentEnum, OrderPaymentStatusEnum, OrderStatusEnum } from "@/utils/types";
 import { Grid, Select, TextInput } from "@mantine/core";
@@ -43,6 +44,7 @@ const Filters = ({
             setPage(1);
           }}
           label="Search"
+          maxLength={TEXT_LIMITS.medium}
         />
       </Grid.Col>
 

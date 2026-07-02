@@ -14,6 +14,8 @@ export type UserTableInsert = Database["public"]["Tables"]["user_table"]["Insert
 export type UserTableUpdate = Database["public"]["Tables"]["user_table"]["Update"];
 
 export type AddressTableRow = Database["public"]["Tables"]["address_table"]["Row"];
+export type AddressTableInsert = Database["public"]["Tables"]["address_table"]["Insert"];
+export type AddressTableUpdate = Database["public"]["Tables"]["address_table"]["Update"];
 export type DeliveryDetailTableRow = Database["public"]["Tables"]["delivery_detail_table"]["Row"];
 
 export type MakeTableRow = Database["public"]["Tables"]["make_table"]["Row"];
@@ -236,6 +238,7 @@ export type AdminOrderSortAccessor =
   | "order_number"
   | "order_status"
   | "order_payment_status";
+export type AdminPickupAddressSortAccessor = "pickup_address_date_created";
 
 export type AdminOrder = OrderTableRow & {
   order_user: UserTableRow;
@@ -296,6 +299,24 @@ export type MagicCollarFormType = {
   allQuantity: null | number;
   stockQuantity: number;
   referenceNumber?: number;
+};
+
+export type PickupAddressFormType = {
+  pickupAddressId?: string;
+  addressId?: string;
+  street: string;
+  barangay: string | null;
+  barangayOptions: (OptionType & { postalCode: string })[];
+  city: string | null;
+  cityOptions: OptionType[];
+  province: string | null;
+  provinceOptions: OptionType[];
+  region: string | null;
+  regionOptions: OptionType[];
+  postalCode: string;
+  latitude: number | null;
+  longitude: number | null;
+  isAvailable: boolean;
 };
 
 export type AdminSortStatus<TAccessor extends string> = {
