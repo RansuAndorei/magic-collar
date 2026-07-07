@@ -22,29 +22,23 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconMapPin, IconStar, IconTrash, IconUser } from "@tabler/icons-react";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { memo, useRef, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 
 type Props = {
   index: number;
-  onRemove: () => void;
-  onSetDefault: () => void;
-  isDefault: boolean;
+  onRemove: (index: number) => void;
+  onSetDefault: (index: number) => void;
   isOnly: boolean;
   regionList: OptionType[];
 };
 
-const ProfileAddressCard = ({
-  index,
-  onRemove,
-  onSetDefault,
-  isDefault,
-  isOnly,
-  regionList,
-}: Props) => {
+const ProfileAddressCard = ({ index, onRemove, onSetDefault, isOnly, regionList }: Props) => {
   const userData = useUserData();
   const pathname = usePathname();
+
   const [loadingFieldList, setLoadingFieldList] = useState<string[]>([]);
+  const requestIdRef = useRef(0);
 
   const {
     formState: { errors },
@@ -54,6 +48,7 @@ const ProfileAddressCard = ({
     getValues,
   } = useFormContext<ProfileAddressFormValuesType>();
 
+  const isDefault = useWatch({ control, name: `addresses.${index}.isDefault` });
   const provinceList = useWatch({ control, name: `addresses.${index}.provinceOptions` }) ?? [];
   const cityList = useWatch({ control, name: `addresses.${index}.cityOptions` }) ?? [];
   const barangayList = useWatch({ control, name: `addresses.${index}.barangayOptions` }) ?? [];
@@ -79,69 +74,115 @@ const ProfileAddressCard = ({
     if (value) setLoadingFieldList(loadingList);
   };
 
-  const logAddressError = async (e: unknown, errorFunction: string) => {
-    notifications.show({
-      message: "Something went wrong. Please try again later.",
-      color: "red",
-    });
-    if (userData && isAppError(e)) {
-      await insertError(supabaseClient, {
-        errorTableInsert: {
-          error_message: e.message,
-          error_url: pathname,
-          error_function: errorFunction,
-          error_user_email: userData.email,
-          error_user_id: userData.id,
-        },
-      });
-    }
-  };
-
+  // requestId guards against out-of-order responses when the user changes
+  // a select rapidly before the previous fetch resolves.
   const handleRegionChange = async (value: string) => {
     if (!userData) return;
+    const requestId = ++requestIdRef.current;
     try {
       const provinceData = await getProvinceList(supabaseClient, { regionId: value });
+      if (requestId !== requestIdRef.current) return;
       setValue(`addresses.${index}.provinceOptions`, provinceData, { shouldDirty: true });
     } catch (e) {
-      await logAddressError(e, "handleProfileRegionChange");
+      notifications.show({
+        message: "Something went wrong. Please try again later.",
+        color: "red",
+      });
+      if (isAppError(e)) {
+        await insertError(supabaseClient, {
+          errorTableInsert: {
+            error_message: e.message,
+            error_url: pathname,
+            error_function: "handleRegionChange",
+            error_user_email: userData.email,
+            error_user_id: userData.id,
+          },
+        });
+      }
     } finally {
-      setLoadingFieldList([]);
+      if (requestId === requestIdRef.current) setLoadingFieldList([]);
     }
   };
 
   const handleProvinceChange = async (value: string) => {
     if (!userData) return;
+    const requestId = ++requestIdRef.current;
     try {
       const cityData = await getCityList(supabaseClient, { provinceId: value });
+      if (requestId !== requestIdRef.current) return;
       setValue(`addresses.${index}.cityOptions`, cityData, { shouldDirty: true });
     } catch (e) {
-      await logAddressError(e, "handleProfileProvinceChange");
+      notifications.show({
+        message: "Something went wrong. Please try again later.",
+        color: "red",
+      });
+      if (isAppError(e)) {
+        await insertError(supabaseClient, {
+          errorTableInsert: {
+            error_message: e.message,
+            error_url: pathname,
+            error_function: "handleProvinceChange",
+            error_user_email: userData.email,
+            error_user_id: userData.id,
+          },
+        });
+      }
     } finally {
-      setLoadingFieldList([]);
+      if (requestId === requestIdRef.current) setLoadingFieldList([]);
     }
   };
 
   const handleCityChange = async (value: string) => {
     if (!userData) return;
+    const requestId = ++requestIdRef.current;
     try {
       const barangayData = await getBarangayList(supabaseClient, { cityId: value });
+      if (requestId !== requestIdRef.current) return;
       setValue(`addresses.${index}.barangayOptions`, barangayData, { shouldDirty: true });
     } catch (e) {
-      await logAddressError(e, "handleProfileCityChange");
+      notifications.show({
+        message: "Something went wrong. Please try again later.",
+        color: "red",
+      });
+      if (isAppError(e)) {
+        await insertError(supabaseClient, {
+          errorTableInsert: {
+            error_message: e.message,
+            error_url: pathname,
+            error_function: "handleCityChange",
+            error_user_email: userData.email,
+            error_user_id: userData.id,
+          },
+        });
+      }
     } finally {
-      setLoadingFieldList([]);
+      if (requestId === requestIdRef.current) setLoadingFieldList([]);
     }
   };
 
   const handleBarangayChange = async (value: string) => {
+    if (!userData) return;
     try {
       const barangays = getValues(`addresses.${index}.barangayOptions`);
       const postalCode = barangays.find((barangay) => barangay.value === value)?.postalCode;
       if (!postalCode) throw new Error(`Missing postal code ${value}`);
-
       setValue(`addresses.${index}.postalCode`, postalCode, { shouldDirty: true });
     } catch (e) {
-      await logAddressError(e, "handleProfileBarangayChange");
+      notifications.show({
+        message: "Something went wrong. Please try again later.",
+        color: "red",
+      });
+      if (isAppError(e)) {
+        await insertError(supabaseClient, {
+          errorTableInsert: {
+            error_message: e.message,
+            error_url: pathname,
+            error_function: "handleBarangayChange",
+            error_user_email: userData.email,
+            error_user_id: userData.id,
+          },
+        });
+      }
     } finally {
       setLoadingFieldList([]);
     }
@@ -163,7 +204,7 @@ const ProfileAddressCard = ({
             )}
           </Group>
           {!isOnly && (
-            <ActionIcon variant="subtle" color="red" size="sm" onClick={onRemove}>
+            <ActionIcon variant="subtle" color="red" size="sm" onClick={() => onRemove(index)}>
               <IconTrash size={14} />
             </ActionIcon>
           )}
@@ -293,17 +334,13 @@ const ProfileAddressCard = ({
               />
             )}
           />
-
           <Controller
             control={control}
             name={`addresses.${index}.phone`}
             rules={{
               validate: {
-                checkNumberOfCharacter: (value) => {
-                  const stringifiedValue = value ? `${value}` : "";
-                  if (stringifiedValue.length !== 10) return "Invalid Phone Number";
-                  return true;
-                },
+                checkNumberOfCharacter: (value) =>
+                  `${value ?? ""}`.length === 10 ? true : "Invalid Phone Number",
                 startsWith: (value) =>
                   `${value}`[0] === "9" ? true : "Phone number must start with 9",
               },
@@ -315,10 +352,7 @@ const ProfileAddressCard = ({
                 maxLength={10}
                 required
                 value={value ?? ""}
-                onChange={(e) => {
-                  const numberOnly = e.currentTarget.value.replace(/\D/g, "");
-                  onChange(numberOnly);
-                }}
+                onChange={(e) => onChange(e.currentTarget.value.replace(/\D/g, ""))}
                 error={errors?.addresses?.[index]?.phone?.message}
                 leftSection={<Text size="sm">+63</Text>}
               />
@@ -341,7 +375,7 @@ const ProfileAddressCard = ({
             label="Set as default address"
             size="sm"
             checked={false}
-            onChange={onSetDefault}
+            onChange={() => onSetDefault(index)}
           />
         )}
       </Stack>
@@ -349,4 +383,4 @@ const ProfileAddressCard = ({
   );
 };
 
-export default ProfileAddressCard;
+export default memo(ProfileAddressCard);

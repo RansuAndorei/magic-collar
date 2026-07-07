@@ -16,7 +16,7 @@ import { notifications } from "@mantine/notifications";
 import { IconDeviceFloppy, IconMapPin, IconPlus } from "@tabler/icons-react";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { FormProvider, useFieldArray, useForm, useWatch } from "react-hook-form";
+import { FormProvider, useFieldArray, useForm } from "react-hook-form";
 import {
   createDeliveryAddress,
   deleteDeliveryAddress,
@@ -44,26 +44,19 @@ const DEFAULT_ADDRESS: ProfileAddressFormType = {
 
 const MAX_ADDRESS_COUNT = 5;
 
-type DeletedAddress = {
-  deliveryDetailId: string;
-  wasDefault: boolean;
-};
-
-type Props = {
-  regionList: OptionType[];
-};
+type DeletedAddress = { deliveryDetailId: string; wasDefault: boolean };
+type Props = { regionList: OptionType[] };
 
 const ProfileAddressSection = ({ regionList }: Props) => {
   const userData = useUserData();
   const pathname = usePathname();
+
   const [isFetching, setIsFetching] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [deletedAddressList, setDeletedAddressList] = useState<DeletedAddress[]>([]);
 
   const formMethods = useForm<ProfileAddressFormValuesType>({
-    defaultValues: {
-      addresses: [{ ...DEFAULT_ADDRESS, isDefault: true }],
-    },
+    defaultValues: { addresses: [{ ...DEFAULT_ADDRESS, isDefault: true }] },
   });
 
   const {
@@ -76,28 +69,6 @@ const ProfileAddressSection = ({ regionList }: Props) => {
   } = formMethods;
 
   const { fields, append, remove } = useFieldArray({ control, name: "addresses" });
-  const watchedAddresses = useWatch({ control, name: "addresses" }) ?? [];
-
-  const logError = useCallback(
-    async (e: unknown, errorFunction: string) => {
-      notifications.show({
-        message: "Something went wrong. Please try again later.",
-        color: "red",
-      });
-      if (userData && isAppError(e)) {
-        await insertError(supabaseClient, {
-          errorTableInsert: {
-            error_message: e.message,
-            error_url: pathname,
-            error_function: errorFunction,
-            error_user_email: userData.email,
-            error_user_id: userData.id,
-          },
-        });
-      }
-    },
-    [pathname, userData],
-  );
 
   const hydrateAddress = useCallback(
     async (address: CheckoutAddressType): Promise<ProfileAddressFormType> => {
@@ -138,7 +109,6 @@ const ProfileAddressSection = ({ regionList }: Props) => {
 
   const fetchAddressList = useCallback(async () => {
     if (!userData) return;
-
     setIsFetching(true);
     try {
       const addressList = await getUserDeliveryAddressList(supabaseClient, { userId: userData.id });
@@ -148,31 +118,43 @@ const ProfileAddressSection = ({ regionList }: Props) => {
       });
       setDeletedAddressList([]);
     } catch (e) {
-      await logError(e, "fetchProfileAddressList");
+      notifications.show({
+        message: "Something went wrong. Please try again later.",
+        color: "red",
+      });
+      if (isAppError(e)) {
+        await insertError(supabaseClient, {
+          errorTableInsert: {
+            error_message: e.message,
+            error_url: pathname,
+            error_function: "fetchAddressList",
+            error_user_email: userData.email,
+            error_user_id: userData.id,
+          },
+        });
+      }
     } finally {
       setIsFetching(false);
     }
-  }, [hydrateAddress, logError, reset, userData]);
+  }, [hydrateAddress, reset, userData]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAddressList();
   }, [fetchAddressList]);
 
-  const handleSetDefault = (index: number) => {
-    const current = getValues("addresses");
-    const updated = current.map((address, i) => ({
-      ...address,
-      isDefault: i === index,
-    }));
+  const handleSetDefault = useCallback(
+    (index: number) => {
+      const current = getValues("addresses");
+      setValue(
+        "addresses",
+        current.map((address, i) => ({ ...address, isDefault: i === index })),
+        { shouldDirty: true, shouldTouch: true },
+      );
+    },
+    [getValues, setValue],
+  );
 
-    setValue("addresses", updated, {
-      shouldDirty: true,
-      shouldTouch: true,
-    });
-  };
-
-  const handleAddAddress = () => {
+  const handleAddAddress = useCallback(() => {
     if (fields.length >= MAX_ADDRESS_COUNT) {
       notifications.show({
         message: `You can save up to ${MAX_ADDRESS_COUNT} delivery addresses.`,
@@ -180,113 +162,142 @@ const ProfileAddressSection = ({ regionList }: Props) => {
       });
       return;
     }
-
     append({ ...DEFAULT_ADDRESS, isDefault: fields.length === 0 });
-  };
+  }, [append, fields.length]);
 
-  const handleRemoveAddress = (index: number) => {
-    const currentAddress = getValues(`addresses.${index}`);
-    if (currentAddress.deliveryDetailId) {
-      setDeletedAddressList((prev) => [
-        ...prev,
-        {
-          deliveryDetailId: currentAddress.deliveryDetailId as string,
-          wasDefault: currentAddress.isDefault,
+  const handleRemoveAddress = useCallback(
+    (index: number) => {
+      const currentAddress = getValues(`addresses.${index}`);
+      if (currentAddress.deliveryDetailId) {
+        setDeletedAddressList((prev) => [
+          ...prev,
+          {
+            deliveryDetailId: currentAddress.deliveryDetailId as string,
+            wasDefault: currentAddress.isDefault,
+          },
+        ]);
+      }
+      remove(index);
+
+      // If we removed the default and others remain, promote the first remaining one synchronously.
+      if (currentAddress.isDefault) {
+        const remaining = getValues("addresses").filter((_, i) => i !== index);
+        if (remaining.length) {
+          setValue("addresses.0.isDefault", true, { shouldDirty: true });
+        }
+      }
+    },
+    [getValues, remove, setValue],
+  );
+
+  const toPersistableAddress = useCallback(
+    (address: ProfileAddressFormType) => {
+      const region = regionList.find(({ value }) => value === address.region)?.label;
+      const province = address.provinceOptions.find(
+        ({ value }) => value === address.province,
+      )?.label;
+      const city = address.cityOptions.find(({ value }) => value === address.city)?.label;
+      const barangay = address.barangayOptions.find(
+        ({ value }) => value === address.barangay,
+      )?.label;
+
+      const missing = [
+        !region && "Region",
+        !province && "Province",
+        !city && "City",
+        !barangay && "Barangay",
+      ].filter(Boolean);
+      if (missing.length) throw new Error(`Missing ${missing.join(", ")}`);
+
+      return {
+        addressUpdate: {
+          address_street: address.street.trim(),
+          address_barangay: barangay!,
+          address_city: city!,
+          address_province: province!,
+          address_region: region!,
+          address_postal_code: address.postalCode.trim(),
         },
-      ]);
-    }
+        deliveryDetailUpdate: {
+          delivery_detail_full_name: address.fullName.trim(),
+          delivery_detail_phone_number: address.phone,
+          delivery_detail_is_default: address.isDefault,
+        },
+      };
+    },
+    [regionList],
+  );
 
-    remove(index);
-    if (currentAddress.isDefault && fields.length > 1) {
-      setTimeout(() => setValue("addresses.0.isDefault", true, { shouldDirty: true }), 0);
-    }
-  };
-
-  const toPersistableAddress = (address: ProfileAddressFormType) => {
-    const region = regionList.find(({ value }) => value === address.region)?.label;
-    if (!region) throw new Error("Missing Region");
-
-    const province = address.provinceOptions.find(({ value }) => value === address.province)?.label;
-    if (!province) throw new Error("Missing Province");
-
-    const city = address.cityOptions.find(({ value }) => value === address.city)?.label;
-    if (!city) throw new Error("Missing City");
-
-    const barangay = address.barangayOptions.find(({ value }) => value === address.barangay)?.label;
-    if (!barangay) throw new Error("Missing Barangay");
-
-    return {
-      addressUpdate: {
-        address_street: address.street.trim(),
-        address_barangay: barangay,
-        address_city: city,
-        address_province: province,
-        address_region: region,
-        address_postal_code: address.postalCode.trim(),
-      },
-      deliveryDetailUpdate: {
-        delivery_detail_full_name: address.fullName.trim(),
-        delivery_detail_phone_number: address.phone,
-        delivery_detail_is_default: address.isDefault,
-      },
-    };
-  };
-
-  const onSubmit = async (data: ProfileAddressFormValuesType) => {
-    if (!userData) return;
-
-    if (data.addresses.length > MAX_ADDRESS_COUNT) {
-      notifications.show({
-        message: `You can save up to ${MAX_ADDRESS_COUNT} delivery addresses.`,
-        color: "orange",
-      });
-      return;
-    }
-
-    try {
-      setIsSaving(true);
-
-      for (const deletedAddress of deletedAddressList) {
-        await deleteDeliveryAddress(supabaseClient, {
-          userId: userData.id,
-          deliveryDetailId: deletedAddress.deliveryDetailId,
-          wasDefault: deletedAddress.wasDefault,
+  const onSubmit = useCallback(
+    async (data: ProfileAddressFormValuesType) => {
+      if (!userData) return;
+      if (data.addresses.length > MAX_ADDRESS_COUNT) {
+        notifications.show({
+          message: `You can save up to ${MAX_ADDRESS_COUNT} delivery addresses.`,
+          color: "orange",
         });
+        return;
       }
 
-      for (const address of data.addresses) {
-        const payload = toPersistableAddress(address);
-        if (address.deliveryDetailId && address.addressId) {
-          await updateDeliveryAddress(supabaseClient, {
-            userId: userData.id,
-            deliveryDetailId: address.deliveryDetailId,
-            addressId: address.addressId,
-            addressUpdate: payload.addressUpdate,
-            deliveryDetailUpdate: payload.deliveryDetailUpdate,
-          });
-        } else {
-          await createDeliveryAddress(supabaseClient, {
-            userId: userData.id,
-            addressInsert: payload.addressUpdate,
-            deliveryDetailInsert: {
-              ...payload.deliveryDetailUpdate,
-              delivery_detail_user_id: userData.id,
+      try {
+        setIsSaving(true);
+
+        await Promise.all(
+          deletedAddressList.map((deletedAddress) =>
+            deleteDeliveryAddress(supabaseClient, {
+              userId: userData.id,
+              deliveryDetailId: deletedAddress.deliveryDetailId,
+              wasDefault: deletedAddress.wasDefault,
+            }),
+          ),
+        );
+
+        await Promise.all(
+          data.addresses.map((address) => {
+            const payload = toPersistableAddress(address);
+            return address.deliveryDetailId && address.addressId
+              ? updateDeliveryAddress(supabaseClient, {
+                  userId: userData.id,
+                  deliveryDetailId: address.deliveryDetailId,
+                  addressId: address.addressId,
+                  addressUpdate: payload.addressUpdate,
+                  deliveryDetailUpdate: payload.deliveryDetailUpdate,
+                })
+              : createDeliveryAddress(supabaseClient, {
+                  userId: userData.id,
+                  addressInsert: payload.addressUpdate,
+                  deliveryDetailInsert: {
+                    ...payload.deliveryDetailUpdate,
+                    delivery_detail_user_id: userData.id,
+                  },
+                });
+          }),
+        );
+
+        notifications.show({ message: "Delivery addresses updated successfully.", color: "green" });
+        await fetchAddressList();
+      } catch (e) {
+        notifications.show({
+          message: "Something went wrong. Please try again later.",
+          color: "red",
+        });
+        if (isAppError(e)) {
+          await insertError(supabaseClient, {
+            errorTableInsert: {
+              error_message: e.message,
+              error_url: pathname,
+              error_function: "onSubmit",
+              error_user_email: userData.email,
+              error_user_id: userData.id,
             },
           });
         }
+      } finally {
+        setIsSaving(false);
       }
-
-      notifications.show({
-        message: "Delivery addresses updated successfully.",
-        color: "green",
-      });
-      await fetchAddressList();
-    } catch (e) {
-      await logError(e, "saveProfileAddressList");
-    } finally {
-      setIsSaving(false);
-    }
-  };
+    },
+    [deletedAddressList, fetchAddressList, toPersistableAddress, userData],
+  );
 
   return (
     <Card withBorder radius="md" p={{ base: "lg", xs: "xl" }} pos="relative">
@@ -312,10 +323,9 @@ const ProfileAddressSection = ({ regionList }: Props) => {
               <ProfileAddressCard
                 key={field.id}
                 index={index}
-                isDefault={watchedAddresses[index]?.isDefault ?? false}
                 isOnly={fields.length === 1}
-                onRemove={() => handleRemoveAddress(index)}
-                onSetDefault={() => handleSetDefault(index)}
+                onRemove={handleRemoveAddress}
+                onSetDefault={handleSetDefault}
                 regionList={regionList}
               />
             ))}

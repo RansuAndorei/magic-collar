@@ -379,3 +379,9 @@ export type PaymongoWebhookPayload = {
     };
   };
 };
+
+export type AddressOptionsType = {
+  provinceOptions: OptionType[];
+  cityOptions: OptionType[];
+  barangayOptions: OptionType[];
+};

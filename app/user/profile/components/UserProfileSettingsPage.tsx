@@ -40,6 +40,7 @@ import { isEqual } from "lodash";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { updateUser } from "../actions";
+import PasswordModal from "./PasswordModal";
 import ProfileAddressSection from "./ProfileAddressSection";
 import ProfileSkeleton from "./ProfileSkeleton";
 
@@ -61,7 +62,8 @@ const UserProfileSettingsPage = ({ regionList }: Props) => {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const [, { open: openPasswordModal }] = useDisclosure(false);
+  const [passwordModalOpened, { open: openPasswordModal, close: closePasswordModal }] =
+    useDisclosure(false);
 
   const handleAvatarChange = (file: File | null) => {
     if (!file) return;
@@ -379,6 +381,10 @@ const UserProfileSettingsPage = ({ regionList }: Props) => {
             </Tabs.Panel>
           </Tabs>
         </Stack>
+        <PasswordModal
+          passwordModalOpened={passwordModalOpened}
+          closePasswordModal={closePasswordModal}
+        />
       </Container>
     </Box>
   );
