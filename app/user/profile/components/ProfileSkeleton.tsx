@@ -1,22 +1,10 @@
-import {
-  Box,
-  Container,
-  Divider,
-  Group,
-  Paper,
-  Skeleton,
-  Stack,
-  useMantineTheme,
-} from "@mantine/core";
+import { Box, Container, Divider, Group, Paper, Skeleton, Stack } from "@mantine/core";
 
-const ProfileSkeleton = ({ isDark = false }: { isDark?: boolean }) => {
-  const theme = useMantineTheme();
-
+const ProfileSkeleton = () => {
   return (
     <Box
       style={{
         minHeight: "100vh",
-        background: theme.colors.gray[isDark ? 8 : 1],
         padding: "48px 0",
       }}
     >

@@ -1,6 +1,9 @@
 "use client";
 
+import { insertError } from "@/app/actions";
 import { LOGO_PATH, TEXT_LIMITS } from "@/utils/constants";
+import { isAppError } from "@/utils/functions";
+import { supabaseClient } from "@/utils/supabase/client";
 import {
   Anchor,
   Box,
@@ -13,33 +16,64 @@ import {
   TextInput,
   Title,
 } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import { IconArrowLeft, IconMail, IconSend } from "@tabler/icons-react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { sendResetPasswordEmail } from "../actions";
 
 type FormValues = {
   email: string;
 };
 
 const ForgotPasswordPage = () => {
-  const [submitted, setSubmitted] = useState(false);
+  const pathname = usePathname();
+
   const [submittedEmail, setSubmittedEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<FormValues>({
     defaultValues: { email: "" },
   });
 
-  const onSubmit = async (values: FormValues) => {
-    // TODO: wire up to Supabase auth.resetPasswordForEmail()
-    console.log(values);
-    setSubmittedEmail(values.email);
-    setSubmitted(true);
+  const onSubmit = async ({ email }: FormValues) => {
+    setIsLoading(true);
+    try {
+      await sendResetPasswordEmail(supabaseClient, { email });
+      notifications.show({
+        message: "Please check your email inbox.",
+        color: "green",
+        withCloseButton: true,
+        autoClose: false,
+      });
+
+      setSubmittedEmail(email);
+      setIsSuccess(true);
+    } catch (e) {
+      notifications.show({
+        message: "Something went wrong. Please try again later.",
+        color: "red",
+      });
+      if (isAppError(e)) {
+        await insertError(supabaseClient, {
+          errorTableInsert: {
+            error_message: e.message,
+            error_url: pathname,
+            error_function: "handleResetPassword",
+          },
+        });
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -58,7 +92,7 @@ const ForgotPasswordPage = () => {
           </Stack>
 
           <Card withBorder radius="md" p="xl">
-            {!submitted ? (
+            {!isSuccess ? (
               <Stack gap="lg">
                 <Stack gap={4}>
                   <Title order={2} style={{ fontSize: rem(24), fontWeight: 800 }}>
@@ -93,7 +127,7 @@ const ForgotPasswordPage = () => {
                       color="red"
                       size="md"
                       fullWidth
-                      loading={isSubmitting}
+                      loading={isLoading}
                       rightSection={<IconSend size={16} />}
                     >
                       Send Reset Link
@@ -135,7 +169,7 @@ const ForgotPasswordPage = () => {
                     c="red.5"
                     underline="hover"
                     size="xs"
-                    onClick={() => setSubmitted(false)}
+                    onClick={() => setIsSuccess(false)}
                     style={{ cursor: "pointer" }}
                   >
                     Try again

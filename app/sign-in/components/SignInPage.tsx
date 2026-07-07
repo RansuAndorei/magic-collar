@@ -55,9 +55,8 @@ const SignInPage = () => {
         email: data.email,
         password: data.password,
       });
-
       if (error) {
-        if (error.message.toLowerCase().includes("invalid sign in credentials")) {
+        if (error.message.toLowerCase().includes("invalid login credentials")) {
           notifications.show({
             message: "Invalid sign in credentials.",
             color: "red",
