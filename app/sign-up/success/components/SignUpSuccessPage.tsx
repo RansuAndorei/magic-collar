@@ -1,6 +1,10 @@
 "use client";
 
+import { insertError } from "@/app/actions";
+import { useLoadingActions } from "@/stores/useLoadingStore";
 import { LOGO_PATH } from "@/utils/constants";
+import { isAppError } from "@/utils/functions";
+import { supabaseClient } from "@/utils/supabase/client";
 import {
   Anchor,
   Box,
@@ -16,8 +20,10 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconArrowLeft, IconMail } from "@tabler/icons-react";
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { getEmailResendTimer } from "../../actions";
+import { insertResendEmail, resendEmail } from "../actions";
 
 const RESEND_COOLDOWN = 60;
 
@@ -25,40 +31,60 @@ const SignUpSuccessPage = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email");
+  const { setIsLoading } = useLoadingActions();
+  const pathname = usePathname();
 
   const [isResending, setIsResending] = useState(false);
   const [timer, setTimer] = useState(0);
 
   useEffect(() => {
-    if (timer <= 0) return;
-    const interval = setInterval(() => setTimer((prev) => prev - 1), 1000);
-    return () => clearInterval(interval);
-  }, [timer]);
+    const fetchResendData = async () => {
+      try {
+        setIsLoading(true);
+        if (!email || typeof email !== "string") throw new Error();
+        const data = await getEmailResendTimer(supabaseClient, { email });
+
+        setTimer(data);
+      } catch (e) {
+        notifications.show({
+          message: "Something went wrong. Please try again later.",
+          color: "red",
+        });
+        if (isAppError(e)) {
+          await insertError(supabaseClient, {
+            errorTableInsert: {
+              error_message: e.message,
+              error_url: pathname,
+              error_function: "fetchResendData",
+            },
+          });
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchResendData();
+  }, [email]);
 
   useEffect(() => {
-    if (!email) router.replace("/sign-up");
-  }, [email, router]);
-
+    let countdown: NodeJS.Timeout;
+    if (timer > 0) {
+      countdown = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(countdown);
+  }, [timer]);
   const handleResend = async () => {
     if (!email || isResending || timer > 0) return;
 
     try {
       setIsResending(true);
-
-      // TODO: replace with your actual Supabase client
-      const { createClient } = await import("@supabase/supabase-js");
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      );
-
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email,
-      });
-
-      if (error) throw error;
-
+      await Promise.all([
+        resendEmail(supabaseClient, { email }),
+        insertResendEmail(supabaseClient, { email }),
+      ]);
+      setTimer(60);
       setTimer(RESEND_COOLDOWN);
       notifications.show({
         message: "Confirmation email sent. Please check your inbox.",
