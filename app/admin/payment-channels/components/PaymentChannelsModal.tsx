@@ -46,7 +46,6 @@ const PaymentChannelsModal = ({ opened, setOpened, defaultValues, refreshTable }
     control,
     register,
     handleSubmit,
-    reset,
     watch,
     setValue,
     trigger,

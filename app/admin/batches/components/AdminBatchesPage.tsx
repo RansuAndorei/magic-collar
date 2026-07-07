@@ -10,6 +10,7 @@ import {
   PAGINATION_OPTIONS,
   TEXT_LIMITS,
 } from "@/utils/constants";
+import dayjs from "@/utils/dayjs";
 import {
   formatCurrency,
   formatDate,
@@ -44,7 +45,6 @@ import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import { IconClipboardList, IconMaximize, IconSearch } from "@tabler/icons-react";
 import { DataTableColumn } from "mantine-datatable";
-import moment from "moment";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import TableColumnVisibility, {
@@ -282,7 +282,7 @@ const AdminBatchesPage = ({ batchLimit }: Props) => {
               <Stack gap={2}>
                 <Progress value={(batch_order_quantity / batchLimit) * 100} striped animated />
                 <Text size="xs" c="dimmed">
-                  {moment(batch_date_created).fromNow()}
+                  {dayjs(batch_date_created).fromNow()}
                 </Text>
               </Stack>
             ) : (
@@ -363,8 +363,8 @@ const AdminBatchesPage = ({ batchLimit }: Props) => {
         <Group justify="space-between" align="flex-end" mb="md">
           <Box>
             <Group gap="xs">
-              <ThemeIcon color="red" variant="light" radius="md">
-                <IconClipboardList size={18} />
+              <ThemeIcon color="red" variant="light" radius="sm">
+                <IconClipboardList size={16} />
               </ThemeIcon>
               <Title order={2} size="h3">
                 Batch List

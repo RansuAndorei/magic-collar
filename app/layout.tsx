@@ -7,8 +7,12 @@ import { Barlow_Condensed, DM_Sans } from "next/font/google";
 import "./global.css";
 
 import { LOGO_PATH } from "@/utils/constants";
+import { isAppError } from "@/utils/functions";
+import { createSupabaseServerClient } from "@/utils/supabase/server";
+import { SettingsEnum } from "@/utils/types";
 import { ColorSchemeScript, mantineHtmlProps } from "@mantine/core";
 import { ReactNode } from "react";
+import { fetchSocials, insertError } from "./actions";
 import HomeLayout from "./components/Layout/HomeLayout";
 import LoadingOverlay from "./components/LoadingOverlay";
 import { Providers } from "./providers";
@@ -31,6 +35,25 @@ const dmSans = DM_Sans({
 });
 
 const Layout = async ({ children }: { children: ReactNode }) => {
+  const supabaseClient = await createSupabaseServerClient();
+  let socials: Record<SettingsEnum, string | null> | null = null;
+  try {
+    const socialsData = await fetchSocials(supabaseClient, {
+      socials: ["FACEBOOK", "INSTAGRAM", "YOUTUBE", "TIKTOK"],
+    });
+    socials = socialsData;
+  } catch (e) {
+    if (isAppError(e)) {
+      await insertError(supabaseClient, {
+        errorTableInsert: {
+          error_message: e.message,
+          error_url: "/",
+          error_function: "fetchLayoutInitialData",
+        },
+      });
+    }
+  }
+
   return (
     <html
       {...mantineHtmlProps}
@@ -45,7 +68,7 @@ const Layout = async ({ children }: { children: ReactNode }) => {
       <body>
         <Providers>
           <LoadingOverlay />
-          <HomeLayout>{children}</HomeLayout>
+          <HomeLayout socials={socials}>{children}</HomeLayout>
         </Providers>
       </body>
     </html>

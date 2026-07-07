@@ -412,8 +412,8 @@ const CouriersPage = () => {
           <Group justify="space-between" align="flex-end" mb="md">
             <Box>
               <Group gap="xs">
-                <ThemeIcon color="red" variant="light" radius="md">
-                  <IconTruckDelivery size={18} />
+                <ThemeIcon color="red" variant="light" radius="sm">
+                  <IconTruckDelivery size={16} />
                 </ThemeIcon>
                 <Title order={2} size="h3">
                   Courier List

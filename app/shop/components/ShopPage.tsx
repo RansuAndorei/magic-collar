@@ -1,5 +1,6 @@
 "use client";
 
+import { useUserData } from "@/stores/useUserStore";
 import {
   CHECKOUT_ID_STORAGE_KEY,
   MAX_QUANTITY,
@@ -94,6 +95,7 @@ type Props = {
 const ShopPage = ({ makeList, modelList, carList }: Props) => {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const userData = useUserData();
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebouncedValue(search, 400);
@@ -380,7 +382,7 @@ const ShopPage = ({ makeList, modelList, carList }: Props) => {
 
   const handleProceedToCheckout = useCallback(() => {
     closeCart();
-    router.push("/checkout");
+    router.push(userData ? "/checkout" : "/sign-in");
   }, [closeCart, router]);
 
   const handlePageChange = (newPage: number) => {
@@ -582,7 +584,7 @@ const ShopPage = ({ makeList, modelList, carList }: Props) => {
                   onClick={openDrawer}
                   style={{ flexShrink: 0 }}
                 >
-                  ShopFiltersType{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+                  Filter {activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
                 </Button>
               </Group>
             </Stack>

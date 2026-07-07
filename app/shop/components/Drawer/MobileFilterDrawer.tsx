@@ -1,7 +1,6 @@
-import { SHOP_SORT_OPTIONS, YEAR_OPTIONS } from '@/utils/constants';
-import { OptionType, ShopFiltersType } from '@/utils/types';
-import { Badge, Button, Divider, Drawer, Group, Select, Stack, Text } from '@mantine/core';
-import React from 'react'
+import { SHOP_SORT_OPTIONS, YEAR_OPTIONS } from "@/utils/constants";
+import { OptionType, ShopFiltersType } from "@/utils/types";
+import { Badge, Button, Divider, Drawer, Group, Select, Stack, Text } from "@mantine/core";
 
 type Props = {
   opened: boolean;
@@ -12,7 +11,7 @@ type Props = {
   onFilterChange: (key: keyof ShopFiltersType, value: string) => void;
   onReset: () => void;
   activeCount: number;
-}
+};
 
 const MobileFilterDrawer = ({
   opened,
@@ -24,7 +23,7 @@ const MobileFilterDrawer = ({
   onReset,
   activeCount,
 }: Props) => {
-   const filteredModels = filters.makeId
+  const filteredModels = filters.makeId
     ? models.filter(({ makeId }) => makeId === filters.makeId)
     : models;
 
@@ -34,7 +33,7 @@ const MobileFilterDrawer = ({
       onClose={onClose}
       title={
         <Group gap="xs">
-          <Text fw={700}>ShopFiltersType</Text>
+          <Text fw={700}>Filter</Text>
           {activeCount > 0 && (
             <Badge color="red" size="sm" circle>
               {activeCount}
@@ -110,7 +109,6 @@ const MobileFilterDrawer = ({
       </Stack>
     </Drawer>
   );
-}
+};
 
-export default MobileFilterDrawer
-
+export default MobileFilterDrawer;

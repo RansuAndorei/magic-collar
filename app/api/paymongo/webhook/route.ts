@@ -3,7 +3,7 @@ import { PAYMONGO_PAYMENT_DATA } from "@/utils/constants";
 import { isAppError } from "@/utils/functions";
 import { checkRateLimit } from "@/utils/rateLimit";
 import { createSupabaseServiceRoleClient } from "@/utils/supabase/service-role";
-import { CreateCheckoutReqType } from "@/utils/types";
+import { CreateCheckoutReqType, PaymongoWebhookPayload } from "@/utils/types";
 import { createHmac } from "crypto";
 import { NextResponse } from "next/server";
 import { createOrder } from "./actions";
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  let payload: unknown;
+  let payload: PaymongoWebhookPayload;
   try {
     payload = JSON.parse(rawBody);
   } catch {
@@ -48,14 +48,14 @@ export async function POST(req: Request) {
   }
 
   try {
-    const event = (payload as any).data.attributes.type;
+    const event = payload.data.attributes.type;
 
     if (event !== "payment.paid") {
       return new NextResponse("OK", { status: 200 });
     }
 
-    const paymentId = (payload as any).data.id;
-    const attributes = (payload as any).data.attributes.data.attributes;
+    const paymentId = payload.data.id;
+    const attributes = payload.data.attributes.data.attributes;
 
     const {
       paymentMethod,

@@ -65,7 +65,8 @@ const ForgotPasswordPage = () => {
                     Forgot your password?
                   </Title>
                   <Text c="dimmed" size="sm" style={{ lineHeight: 1.6 }}>
-                    No worries. Enter your email and we'll send you a link to reset your password.
+                    No worries. Enter your email and we&apos;ll send you a link to reset your
+                    password.
                   </Text>
                 </Stack>
 
@@ -129,7 +130,7 @@ const ForgotPasswordPage = () => {
                   </Text>
                 </Stack>
                 <Text size="xs" c="dimmed">
-                  Didn't receive it?{" "}
+                  Didn&apos;t receive it?{" "}
                   <Anchor
                     c="red.5"
                     underline="hover"

@@ -293,8 +293,8 @@ const AdminOrdersPage = () => {
         <Group justify="space-between" align="flex-end" mb="md">
           <Box>
             <Group gap="xs">
-              <ThemeIcon color="red" variant="light" radius="md">
-                <IconShoppingBag size={18} />
+              <ThemeIcon color="red" variant="light" radius="sm">
+                <IconShoppingBag size={16} />
               </ThemeIcon>
               <Title order={2} size="h3">
                 Order List

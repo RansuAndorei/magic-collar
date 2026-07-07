@@ -1,6 +1,7 @@
 "use client";
 
-import { FOOTER_LINKS, LOGO_PATH, SOCIAL_LINKS } from "@/utils/constants";
+import { FOOTER_LINKS, LOGO_PATH } from "@/utils/constants";
+import { SettingsEnum } from "@/utils/types";
 import {
   ActionIcon,
   Box,
@@ -14,16 +15,33 @@ import {
   Text,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconChevronDown, IconChevronUp } from "@tabler/icons-react";
+import {
+  IconBrandFacebook,
+  IconBrandInstagram,
+  IconBrandTiktok,
+  IconBrandYoutube,
+  IconChevronDown,
+  IconChevronUp,
+} from "@tabler/icons-react";
 import Image from "next/image";
+import { memo } from "react";
 import FooterLink from "./FooterLink";
 
-type Props = {
+type FooterSectionProps = {
   section: string;
   links: { label: string; link: string }[];
 };
 
-const FooterSection = ({ section, links }: Props) => {
+const FOOTER_ENTRIES = Object.entries(FOOTER_LINKS);
+
+const SOCIAL_ICONS = [
+  { key: "FACEBOOK", label: "Facebook", Icon: IconBrandFacebook },
+  { key: "INSTAGRAM", label: "Instagram", Icon: IconBrandInstagram },
+  { key: "YOUTUBE", label: "Youtube", Icon: IconBrandYoutube },
+  { key: "TIKTOK", label: "Tiktok", Icon: IconBrandTiktok },
+] as const;
+
+const FooterSection = memo(({ section, links }: FooterSectionProps) => {
   const [opened, { toggle }] = useDisclosure(false);
 
   return (
@@ -50,9 +68,14 @@ const FooterSection = ({ section, links }: Props) => {
       <Divider />
     </Box>
   );
+});
+FooterSection.displayName = "FooterSection";
+
+type FooterProps = {
+  socials: Record<SettingsEnum, string | null> | null;
 };
 
-const Footer = () => {
+const Footer = ({ socials }: FooterProps) => {
   return (
     <Box
       component="footer"
@@ -80,18 +103,26 @@ const Footer = () => {
               accredited resellers across the Philippines.
             </Text>
             <Group gap="xs" mt="sm">
-              {SOCIAL_LINKS.map(({ icon: Icon, label }) => (
-                <ActionIcon
-                  key={label}
-                  variant="subtle"
-                  color="gray"
-                  size="lg"
-                  radius="md"
-                  aria-label={label}
-                >
-                  <Icon size={20} />
-                </ActionIcon>
-              ))}
+              {SOCIAL_ICONS.map(({ key, label, Icon }) => {
+                const href = socials?.[key as SettingsEnum];
+                if (!href) return null;
+                return (
+                  <ActionIcon
+                    key={key}
+                    component="a"
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="subtle"
+                    color="gray"
+                    size="lg"
+                    radius="md"
+                    aria-label={label}
+                  >
+                    <Icon size={20} />
+                  </ActionIcon>
+                );
+              })}
             </Group>
           </Box>
 
@@ -99,14 +130,14 @@ const Footer = () => {
 
           {/* Mobile: accordion */}
           <Box hiddenFrom="sm">
-            {Object.entries(FOOTER_LINKS).map(([section, links]) => (
+            {FOOTER_ENTRIES.map(([section, links]) => (
               <FooterSection key={section} section={section} links={links} />
             ))}
           </Box>
 
           {/* Desktop: 3-col grid */}
           <SimpleGrid cols={3} spacing="xl" visibleFrom="sm">
-            {Object.entries(FOOTER_LINKS).map(([section, links]) => (
+            {FOOTER_ENTRIES.map(([section, links]) => (
               <Stack key={section} gap="sm">
                 <Text size="sm" fw={700} tt="uppercase" style={{ letterSpacing: "0.08em" }}>
                   {section}
@@ -122,11 +153,12 @@ const Footer = () => {
         <Divider visibleFrom="sm" />
 
         <Text size="xs" c="dimmed" pt="lg" style={{ textAlign: "center" }}>
-          © {new Date().getFullYear() + " "} Magic Collar | Fit &amp; Firm. All rights reserved.
+          © 2026 Magic Collar | Fit &amp; Firm. All rights reserved.
         </Text>
       </Container>
     </Box>
   );
 };
 
-export default Footer;
+Footer.displayName = "Footer";
+export default memo(Footer);

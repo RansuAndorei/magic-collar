@@ -1,11 +1,13 @@
-import { FEATURED_PRODUCTS } from "@/utils/constants";
+import SetContentsLabel from "@/app/shop/components/Helper/SetContentsLabel";
+import { formatCurrency, getProductSubtitle } from "@/utils/functions";
+import { CarShopType } from "@/utils/types";
 import {
-  Badge,
   Box,
   Button,
   Card,
   Center,
   Container,
+  Divider,
   Flex,
   Group,
   rem,
@@ -14,9 +16,14 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import { IconArrowRight, IconEngine, IconStar } from "@tabler/icons-react";
+import { IconArrowRight } from "@tabler/icons-react";
+import Image from "next/image";
 
-const FeaturedProducts = () => {
+type Props = {
+  topItems: CarShopType[];
+};
+
+const FeaturedProducts = ({ topItems }: Props) => {
   return (
     <Box
       className="section-alt"
@@ -46,9 +53,9 @@ const FeaturedProducts = () => {
           </Flex>
 
           <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
-            {FEATURED_PRODUCTS.map((product) => (
+            {topItems.map((product) => (
               <Card
-                key={product.sku}
+                key={product.car_id}
                 radius="md"
                 padding="lg"
                 withBorder
@@ -69,59 +76,50 @@ const FeaturedProducts = () => {
                       position: "relative",
                     }}
                   >
-                    <IconEngine size={72} stroke={0.7} color="var(--mantine-color-dimmed)" />
-                    <Badge
-                      color={product.badgeColor}
-                      variant="filled"
-                      size="sm"
-                      style={{ position: "absolute", top: 10, left: 10 }}
-                    >
-                      {product.badge}
-                    </Badge>
+                    <Image
+                      src={product.car_image_attachment.attachment_path}
+                      alt={product.car_image_attachment.attachment_name}
+                      fill
+                      sizes="160px"
+                      style={{
+                        objectFit: "cover",
+                      }}
+                      loading="eager"
+                    />
                   </Center>
                 </Card.Section>
 
                 <Stack gap="xs" mt="md">
-                  <Text size="xs" c="dimmed">
-                    {product.sku}
-                  </Text>
-                  <Text fw={600} size="sm" lineClamp={1}>
-                    {product.name}
-                  </Text>
-                  <Text size="xs" c="dimmed" lineClamp={1}>
-                    {product.model}
-                  </Text>
-
-                  <Group gap={4} mt={2}>
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <IconStar
-                        key={i}
-                        size={12}
-                        fill={
-                          i < Math.floor(product.rating) ? "var(--mantine-color-yellow-5)" : "none"
-                        }
-                        color="var(--mantine-color-yellow-5)"
-                      />
-                    ))}
-                    <Text size="xs" c="dimmed">
-                      ({product.reviews})
+                  <Stack gap={2}>
+                    <Text fw={700} size="sm" lineClamp={1}>
+                      {product.car_make} {product.car_model}
                     </Text>
-                  </Group>
-
-                  <Group justify="space-between" align="center" mt="xs">
-                    <Stack gap={0}>
-                      <Text fw={700} size="lg">
-                        {product.price}
-                      </Text>
-                      {product.oldPrice && (
-                        <Text size="xs" c="dimmed" td="line-through">
-                          {product.oldPrice}
-                        </Text>
+                    <Text size="xs" c="dimmed">
+                      {getProductSubtitle(
+                        product.car_model_code,
+                        product.car_model_year_start,
+                        product.car_model_year_end,
                       )}
+                    </Text>
+                  </Stack>
+                  <SetContentsLabel product={product} />
+                  <Divider />
+                  <Group justify="space-between" align="flex-end">
+                    <Stack gap={2}>
+                      <Text fw={800} size="lg" c="red.5">
+                        {formatCurrency(product.car_magic_collar.magic_collar_price, {
+                          currency: product.car_magic_collar.magic_collar_price_currency,
+                          minimumFractionDigits: 0,
+                        })}
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        DP:{" "}
+                        {formatCurrency(product.car_magic_collar.magic_collar_down_payment_price, {
+                          currency: product.car_magic_collar.magic_collar_price_currency,
+                          minimumFractionDigits: 0,
+                        })}
+                      </Text>
                     </Stack>
-                    <Button size="xs" color="red" radius="md">
-                      Add to Cart
-                    </Button>
                   </Group>
                 </Stack>
               </Card>

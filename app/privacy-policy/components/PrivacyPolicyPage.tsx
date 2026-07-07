@@ -439,7 +439,7 @@ const PrivacyPolicyPage = () => {
           {/* Children's Privacy */}
           <Stack gap="md">
             <Title order={2} style={{ fontSize: rem(22), fontWeight: 700 }}>
-              Children's Privacy
+              Children&apos;s Privacy
             </Title>
             <Text size="sm" c="dimmed" style={{ lineHeight: 1.8 }}>
               Our services are not directed to individuals under the age of 18. We do not knowingly

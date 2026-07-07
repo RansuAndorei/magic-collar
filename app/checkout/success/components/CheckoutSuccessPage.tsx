@@ -36,13 +36,12 @@ const CheckoutSuccessPage = () => {
 
   useEffect(() => {
     const rawSummary = window.sessionStorage.getItem(CHECKOUT_SUMMARY_STORAGE_KEY);
-
     if (!rawSummary) {
-      setIsLoading(false);
       return;
     }
 
     try {
+      setIsLoading(true);
       setSummary(JSON.parse(rawSummary) as CheckoutSummary);
       window.sessionStorage.removeItem(CHECKOUT_SUMMARY_STORAGE_KEY);
       localStorage.removeItem(SHOP_CART_STORAGE_KEY);

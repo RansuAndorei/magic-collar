@@ -2,8 +2,8 @@ import { isAppError } from "@/utils/functions";
 import { createSupabaseServerClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { insertError } from "../../actions";
-import AdminBatchesPage from "./components/AdminBatchesPage";
 import { getBatchLimit } from "./actions";
+import AdminBatchesPage from "./components/AdminBatchesPage";
 
 const Page = async () => {
   const supabaseClient = await createSupabaseServerClient();
@@ -13,10 +13,9 @@ const Page = async () => {
   } = await supabaseClient.auth.getUser();
   if (!user) redirect("/sign-in");
 
+  let batchLimit;
   try {
-    const batchLimit = await getBatchLimit(supabaseClient);
-
-    return <AdminBatchesPage batchLimit={batchLimit}/>;
+    batchLimit = await getBatchLimit(supabaseClient);
   } catch (e) {
     if (isAppError(e)) {
       await insertError(supabaseClient, {
@@ -29,8 +28,11 @@ const Page = async () => {
         },
       });
     }
+
     redirect("/error/500");
   }
+
+  return <AdminBatchesPage batchLimit={batchLimit} />;
 };
 
 export default Page;

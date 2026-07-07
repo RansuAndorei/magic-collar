@@ -3,6 +3,7 @@
 import { insertError, uploadFile } from "@/app/actions";
 import { useUserActions, useUserData, useUserProfile } from "@/stores/useUserStore";
 import { MAX_FILE_SIZE } from "@/utils/constants";
+import dayjs from "@/utils/dayjs";
 import { generateAvatarColor, isAppError } from "@/utils/functions";
 import { supabaseClient } from "@/utils/supabase/client";
 import {
@@ -34,7 +35,6 @@ import {
   IconUser,
 } from "@tabler/icons-react";
 import { isEqual } from "lodash";
-import moment from "moment";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { updateUser } from "../actions";
@@ -365,7 +365,7 @@ const UserProfileSettingsPage = () => {
             <Group gap="xs">
               <IconLock size={16} color={theme.colors.dark[isDark ? 0 : 4]} />
               <Text size="sm" c="dimmed">
-                User data last changed: {moment(userData.updated_at).fromNow()}
+                User data last changed: {dayjs(userData.updated_at).fromNow()}
               </Text>
             </Group>
           </Paper>

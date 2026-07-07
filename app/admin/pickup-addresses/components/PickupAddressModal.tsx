@@ -165,7 +165,6 @@ const PickupAddressModal = ({ opened, setOpened, defaultValues, refreshTable }: 
       }
     };
     hydrateExistingChain();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opened, defaultValues.pickupAddressId]);
 
   const resetOptions = (level: number, value: string | null) => {
@@ -176,12 +175,16 @@ const PickupAddressModal = ({ opened, setOpened, defaultValues, refreshTable }: 
       setValue("province", null);
     }
     if (level < 3) {
-      !loadingList.length && loadingList.push("city");
+      if (!loadingList.length) {
+        loadingList.push("city");
+      }
       setValue("cityOptions", []);
       setValue("city", null);
     }
     if (level < 4) {
-      !loadingList.length && loadingList.push("barangay");
+      if (!loadingList.length) {
+        loadingList.push("barangay");
+      }
       setValue("barangayOptions", []);
       setValue("barangay", null);
     }
@@ -554,7 +557,7 @@ const PickupAddressModal = ({ opened, setOpened, defaultValues, refreshTable }: 
                   error={errors.latitude?.message}
                   value={field.value ?? ""}
                   onChange={field.onChange}
-                  onBlur={(e) => {
+                  onBlur={() => {
                     field.onBlur();
                     if (typeof field.value === "number") {
                       field.onChange(Number(field.value.toFixed(6)));

@@ -1,3 +1,6 @@
+import SetContentsLabel from "@/app/shop/components/Helper/SetContentsLabel";
+import { formatCurrency, getProductSubtitle, getProductTitle } from "@/utils/functions";
+import { CarShopType } from "@/utils/types";
 import {
   Badge,
   Box,
@@ -11,10 +14,15 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import { IconEngine, IconSearch } from "@tabler/icons-react";
+import { IconSearch } from "@tabler/icons-react";
+import Image from "next/image";
 import Link from "next/link";
 
-const Hero = () => {
+type Props = {
+  topItem: CarShopType;
+};
+
+const Hero = ({ topItem }: Props) => {
   return (
     <Box
       py={{ base: rem(72), md: rem(100) }}
@@ -24,7 +32,7 @@ const Hero = () => {
         <SimpleGrid cols={{ base: 1, md: 2 }} spacing={60} style={{ alignItems: "center" }}>
           <Stack gap="xl">
             <Badge color="red" variant="light" size="lg" radius="sm" w="fit-content">
-              🔥 Philippines' #1 Magic Collar Supplier
+              🔥 Philippines&apos; #1 Magic Collar Supplier
             </Badge>
             <Title
               order={1}
@@ -90,25 +98,39 @@ const Hero = () => {
                 overflow: "hidden",
               }}
             >
-              <IconEngine size={200} stroke={0.5} color="var(--mantine-color-dimmed)" />
-              {["Honda", "BMW", "Toyota", "Ford"].map((brand, i) => (
-                <Badge
-                  key={brand}
-                  variant="default"
-                  size="sm"
-                  style={{
-                    position: "absolute",
-                    ...[
-                      { top: 24, left: 24 },
-                      { top: 24, right: 24 },
-                      { bottom: 60, left: 24 },
-                      { bottom: 60, right: 24 },
-                    ][i],
-                  }}
-                >
-                  {brand}
-                </Badge>
-              ))}
+              <Image
+                src={topItem.car_image_attachment.attachment_path}
+                alt={topItem.car_image_attachment.attachment_name}
+                fill
+                sizes="380px"
+                style={{
+                  objectFit: "cover",
+                }}
+                loading="eager"
+              />
+              <Badge
+                variant="default"
+                size="sm"
+                style={{
+                  position: "absolute",
+                  top: 24,
+                  left: 24,
+                }}
+              >
+                {topItem.car_make}
+              </Badge>
+
+              <Badge
+                variant="default"
+                size="sm"
+                style={{
+                  position: "absolute",
+                  top: 24,
+                  right: 24,
+                }}
+              >
+                {topItem.car_model}
+              </Badge>
               <Box
                 style={{
                   position: "absolute",
@@ -128,13 +150,23 @@ const Hero = () => {
                       Most Popular
                     </Text>
                     <Text size="sm" fw={600} c="white">
-                      MC — Honda Civic
+                      {getProductTitle(topItem.car_make, topItem.car_model)}
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      {getProductSubtitle(
+                        topItem.car_model_code,
+                        topItem.car_model_year_start,
+                        topItem.car_model_year_end,
+                      )}
                     </Text>
                   </Stack>
                   <Badge color="red" variant="filled">
-                    ₱3,499
+                    {formatCurrency(topItem.car_magic_collar.magic_collar_price, {
+                      minimumFractionDigits: 0,
+                    })}
                   </Badge>
                 </Group>
+                <SetContentsLabel product={topItem} />
               </Box>
             </Box>
           </Center>

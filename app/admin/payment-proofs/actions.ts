@@ -70,5 +70,5 @@ export const checkTransactionIdDuplicate = async (
     .eq("order_payment_transaction_id", transactionId)
     .eq("order_payment_request_status", "APPROVED");
   if (error) throw error;
-  return !Boolean(count);
+  return !count;
 };

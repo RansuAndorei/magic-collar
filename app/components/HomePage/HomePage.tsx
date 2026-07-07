@@ -1,5 +1,6 @@
 "use client";
 
+import { CarShopType, SettingsEnum } from "@/utils/types";
 import { Box } from "@mantine/core";
 import { useEffect } from "react";
 import CarBrands from "./Sections/CarBrands";
@@ -11,7 +12,12 @@ import Testimonials from "./Sections/Testimonials";
 import TrustBar from "./Sections/TrustBar";
 import WhyUs from "./Sections/WhyUs";
 
-const HomePage = () => {
+type Props = {
+  topItems: CarShopType[];
+  socials: Record<SettingsEnum, string | null>;
+};
+
+const HomePage = ({ topItems, socials }: Props) => {
   useEffect(() => {
     const scrollToHash = () => {
       const hash = window.location.hash;
@@ -35,14 +41,14 @@ const HomePage = () => {
 
   return (
     <Box style={{ minHeight: "100vh" }}>
-      <Hero />
+      <Hero topItem={topItems[0]} />
       <TrustBar />
       <CarBrands />
-      <FeaturedProducts />
+      <FeaturedProducts topItems={topItems.slice(1)} />
       <WhyUs />
       <Testimonials />
       <CTABanner />
-      <Contact />
+      <Contact socials={socials} />
     </Box>
   );
 };

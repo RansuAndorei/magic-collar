@@ -101,7 +101,7 @@ const FAQS = [
   {
     question: "Do you offer pick-up?",
     answer:
-      "Yes, you may pick up your order at our store in Quezon City, Metro Manila. Select the 'Store Pick-up' option at checkout. Pick-up orders are ready within 1 business day after payment confirmation.",
+      "Yes, you may pick up your order at our store in Quezon City, Metro Manila. Select the Store / Pick-up option at checkout. Pick-up orders are ready within 1 business day after payment confirmation.",
   },
   {
     question: "What couriers do you use?",
@@ -142,7 +142,7 @@ const ShippingPolicyPage = () => {
               How We Deliver Your Parts
             </Title>
             <Text c="dimmed" size="lg" maw={520} mx="auto">
-              We want your Magic Collar to arrive fast, safe, and exactly as ordered. Here's
+              We want your Magic Collar to arrive fast, safe, and exactly as ordered. Here&apos;s
               everything you need to know about our shipping process.
             </Text>
             <Text size="xs" c="dimmed" mt="xs">

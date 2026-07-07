@@ -81,7 +81,6 @@ const ConnectedCars = ({
         setLoadingRow(null);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [userData, pathname],
   );
 
@@ -149,7 +148,6 @@ const ConnectedCars = ({
         setLoadingRow(null);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [userData, pathname],
   );
 

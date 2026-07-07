@@ -12,6 +12,7 @@ import { notifications } from "@mantine/notifications";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { memo, useEffect } from "react";
 import AdminNavigationDrawer from "./AdminNavigationDrawer";
 import ColorModeToggle from "./ColorModeToggle";
 import MobileDrawer from "./MobileDrawer";
@@ -41,6 +42,10 @@ const Header = () => {
       });
     }
   };
+
+  useEffect(() => {
+    close();
+  }, [pathname]);
 
   const handleLogout = async () => {
     if (!userData) return;
@@ -170,4 +175,4 @@ const Header = () => {
   );
 };
 
-export default Header;
+export default memo(Header);

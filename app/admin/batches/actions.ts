@@ -31,7 +31,7 @@ export const getBatchLimit = async (supabaseClient: SupabaseClient<Database>) =>
     .eq("system_setting_key", "BATCH_LIMIT")
     .single();
   if (error) throw error;
-  return Number(data.system_setting_value) ?? 0;
+  return Number(data.system_setting_value) || 0;
 };
 
 export const transitionBatchStatus = async (

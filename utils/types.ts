@@ -70,6 +70,12 @@ export type PaymentChannelTableInsert =
 export type PaymentChannelTableUpdate =
   Database["public"]["Tables"]["payment_channel_table"]["Update"];
 
+export type SystemSettingTableRow = Database["public"]["Tables"]["system_setting_table"]["Row"];
+export type SystemSettingTableInsert =
+  Database["public"]["Tables"]["system_setting_table"]["Insert"];
+export type SystemSettingTableUpdate =
+  Database["public"]["Tables"]["system_setting_table"]["Update"];
+
 export type BatchStatusLogTableRow = Database["public"]["Tables"]["batch_status_log_table"]["Row"];
 export type BatchStatusLogTableInsert =
   Database["public"]["Tables"]["batch_status_log_table"]["Insert"];
@@ -94,10 +100,7 @@ export type CourierTableInsert = Database["public"]["Tables"]["courier_table"]["
 export type CourierTableUpdate = Database["public"]["Tables"]["courier_table"]["Update"];
 
 export type AttachmentBucketType =
-  | "CARS"
-  | "USER_AVATARS"
-  | "PAYMENT_PROOFS"
-  | "PAYMENT_CHANNEL_QR";
+  "CARS" | "USER_AVATARS" | "PAYMENT_PROOFS" | "PAYMENT_CHANNEL_QR";
 
 export type PaymentDescriptionEnum = Database["public"]["Enums"]["payment_description"];
 export type OrderFulfillmentEnum = Database["public"]["Enums"]["order_fulfillment"];
@@ -105,6 +108,7 @@ export type OrderStatusEnum = Database["public"]["Enums"]["order_status"];
 export type OrderItemStatusEnum = Database["public"]["Enums"]["order_item_status"];
 export type OrderPaymentStatusEnum = Database["public"]["Enums"]["order_payment_status"];
 export type BatchStatusEnum = Database["public"]["Enums"]["batch_status"];
+export type SettingsEnum = Database["public"]["Enums"]["settings"];
 export type OrderPaymentRequestStatusEnum =
   Database["public"]["Enums"]["order_payment_request_status"];
 
@@ -230,18 +234,11 @@ export type AdminCatalogCar = CarTableRow & {
   car_image_attachment: AttachmentTableRow;
 };
 export type AdminCarCatalogSortAccessor =
-  | "car_date_created"
-  | "magic_collar_stock_quantity"
-  | "magic_collar_price";
+  "car_date_created" | "magic_collar_stock_quantity" | "magic_collar_price";
 export type AdminMagicCollarCatalogSortAccessor =
-  | "magic_collar_date_created"
-  | "magic_collar_stock_quantity"
-  | "magic_collar_price";
+  "magic_collar_date_created" | "magic_collar_stock_quantity" | "magic_collar_price";
 export type AdminOrderSortAccessor =
-  | "order_date_created"
-  | "order_number"
-  | "order_status"
-  | "order_payment_status";
+  "order_date_created" | "order_number" | "order_status" | "order_payment_status";
 export type AdminPickupAddressSortAccessor = "pickup_address_date_created";
 export type AdminPaymentChannelSortAccessor = "payment_channel_date_created";
 export type AdminCourierSortAccessor = "courier_date_created";
@@ -353,4 +350,23 @@ export type CourierFormType = {
   courierId?: string;
   name: string;
   isAvailable: boolean;
+};
+
+export type PaymongoWebhookPayload = {
+  data: {
+    id: string;
+    attributes: {
+      type: string;
+      data: {
+        attributes: {
+          metadata: CreateCheckoutReqType & {
+            orderData: string;
+            totalAmount: number;
+            currency: string;
+            checkoutId: string;
+          };
+        };
+      };
+    };
+  };
 };

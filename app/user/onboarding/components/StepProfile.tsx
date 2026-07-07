@@ -11,13 +11,15 @@ import {
   TextInput,
   Tooltip,
 } from "@mantine/core";
+import { User } from "@supabase/auth-js";
 import { IconCamera, IconMail, IconUser, IconX } from "@tabler/icons-react";
+import { RefObject } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 
 type Props = {
-  userData: any;
+  userData: User | null;
   avatarPreview: string | null;
-  resetRef: any;
+  resetRef: RefObject<(() => void) | null>;
   onAvatarChange: (file: File | null) => void;
   onRemoveAvatar: () => void;
 };

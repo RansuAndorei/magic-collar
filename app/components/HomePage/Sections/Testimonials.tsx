@@ -47,7 +47,7 @@ const Testimonials = () => {
                     </Badge>
                   </Group>
                   <Text c="dimmed" size="sm" style={{ lineHeight: 1.7 }}>
-                    "{t.text}"
+                    &ldquo;{t.text}&ldquo;
                   </Text>
                   <Group gap="sm">
                     <ThemeIcon size={36} radius="xl" variant="light" color="red">

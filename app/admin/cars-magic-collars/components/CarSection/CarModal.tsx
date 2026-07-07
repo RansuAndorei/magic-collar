@@ -75,23 +75,6 @@ const CarModal = ({
     defaultValues,
   });
 
-  useEffect(() => {
-    if (opened) {
-      reset(defaultValues);
-      if (defaultValues.carId && defaultValues.magicCollarReferenceNumber) {
-        handleMagicCollarReferenceNumberChange(defaultValues.magicCollarReferenceNumber);
-        setImagePreviewUrl(defaultValues.existingAttachment?.path ?? null);
-        setLastCheckedReferenceNumber(defaultValues.magicCollarReferenceNumber);
-      } else {
-        setMagicCollar(null);
-        setImagePreviewUrl(null);
-        setLastCheckedReferenceNumber(null);
-      }
-    } else {
-      setMagicCollar(null);
-    }
-  }, [opened, defaultValues, reset]);
-
   const handleMagicCollarReferenceNumberChange = (
     referenceNumber: number | undefined,
     onChange?: (value: number | null) => void,
@@ -149,6 +132,23 @@ const CarModal = ({
       }
     }, 400);
   };
+
+  useEffect(() => {
+    if (opened) {
+      reset(defaultValues);
+      if (defaultValues.carId && defaultValues.magicCollarReferenceNumber) {
+        handleMagicCollarReferenceNumberChange(defaultValues.magicCollarReferenceNumber);
+        setImagePreviewUrl(defaultValues.existingAttachment?.path ?? null);
+        setLastCheckedReferenceNumber(defaultValues.magicCollarReferenceNumber);
+      } else {
+        setMagicCollar(null);
+        setImagePreviewUrl(null);
+        setLastCheckedReferenceNumber(null);
+      }
+    } else {
+      setMagicCollar(null);
+    }
+  }, [opened, defaultValues, reset]);
 
   const onSubmit = async (values: CarFormType) => {
     if (!userData) return;

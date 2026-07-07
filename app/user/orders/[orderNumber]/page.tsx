@@ -19,10 +19,15 @@ const Page = async ({ params }: Props) => {
   const {
     data: { user },
   } = await supabaseClient.auth.getUser();
+
   if (!user) redirect("/sign-in");
 
+  let order;
+  let paymentChannelList;
+  let approvedPaymentTotal;
+
   try {
-    const [order, paymentChannelList, approvedPaymentTotal] = await Promise.all([
+    [order, paymentChannelList, approvedPaymentTotal] = await Promise.all([
       getCustomerOrder(supabaseClient, {
         userId: user.id,
         orderNumber,
@@ -30,15 +35,6 @@ const Page = async ({ params }: Props) => {
       getPaymentChannelList(supabaseClient),
       getOrderPaymentTotals(supabaseClient, { orderNumber }),
     ]);
-    if (!order) redirect("/error/404");
-
-    return (
-      <OrderDetailPage
-        order={order}
-        paymentChannelList={paymentChannelList}
-        approvedPaymentTotal={approvedPaymentTotal}
-      />
-    );
   } catch (e) {
     if (isAppError(e)) {
       await insertError(supabaseClient, {
@@ -53,6 +49,15 @@ const Page = async ({ params }: Props) => {
     }
     redirect("/error/500");
   }
+  if (!order) redirect("/error/404");
+
+  return (
+    <OrderDetailPage
+      order={order}
+      paymentChannelList={paymentChannelList}
+      approvedPaymentTotal={approvedPaymentTotal}
+    />
+  );
 };
 
 export default Page;

@@ -105,7 +105,7 @@ const CarBrands = () => {
               component={Link}
               href="/shop"
             >
-              Browse All Products by Brand
+              Browse All Products by Make
             </Button>
           </Center>
         </Stack>

@@ -21,14 +21,16 @@ const Page = async ({ params }: Props) => {
   } = await supabaseClient.auth.getUser();
   if (!user) redirect("/sign-in");
 
+  let batch;
+  let batchLimit;
+
   try {
-    const [batch, batchLimit] = await Promise.all([
-      getAdminBatchDetail(supabaseClient, { batchNumber: Number(batchNumber) }),
+    [batch, batchLimit] = await Promise.all([
+      getAdminBatchDetail(supabaseClient, {
+        batchNumber: Number(batchNumber),
+      }),
       getBatchLimit(supabaseClient),
     ]);
-    if (!batch) redirect("/error/404");
-
-    return <AdminBatchDetailPage batch={batch} batchLimit={batchLimit} />;
   } catch (e) {
     if (isAppError(e)) {
       await insertError(supabaseClient, {
@@ -43,6 +45,11 @@ const Page = async ({ params }: Props) => {
     }
     redirect("/error/500");
   }
+  if (!batch) {
+    redirect("/error/404");
+  }
+
+  return <AdminBatchDetailPage batch={batch} batchLimit={batchLimit} />;
 };
 
 export default Page;

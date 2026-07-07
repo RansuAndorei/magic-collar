@@ -136,6 +136,11 @@ const CarList = ({ makeList, modelList }: Props) => {
     }
   }, [carPage, carRecordsPerPage, carSearch, carStatus, carSortStatus, pathname, userData]);
 
+  const refreshTables = useCallback(() => {
+    loadCars();
+    router.refresh();
+  }, [loadCars, router]);
+
   const handleAvailabilityChange = useCallback(
     async (car: AdminCatalogCar) => {
       if (!userData) return;
@@ -174,7 +179,6 @@ const CarList = ({ makeList, modelList }: Props) => {
         setLoadingRow(null);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [userData, pathname],
   );
 
@@ -242,7 +246,6 @@ const CarList = ({ makeList, modelList }: Props) => {
         setLoadingRow(null);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [userData, pathname],
   );
 
@@ -264,11 +267,6 @@ const CarList = ({ makeList, modelList }: Props) => {
     },
     [handleDelete],
   );
-
-  const refreshTables = useCallback(() => {
-    loadCars();
-    router.refresh();
-  }, [loadCars, router]);
 
   const openCreateModal = useCallback(() => {
     setValues(emptyFormValues);

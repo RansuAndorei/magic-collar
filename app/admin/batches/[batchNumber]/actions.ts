@@ -1,5 +1,5 @@
 import { Database } from "@/utils/database";
-import { AdminBatchDetail, BatchStatusEnum } from "@/utils/types";
+import { AdminBatchDetail } from "@/utils/types";
 import { SupabaseClient } from "@supabase/supabase-js";
 
 export const getAdminBatchDetail = async (

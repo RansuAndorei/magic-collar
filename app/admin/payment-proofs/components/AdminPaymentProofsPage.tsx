@@ -164,8 +164,8 @@ const AdminPaymentProofsPage = () => {
         <Group justify="space-between" align="flex-end" mb="md">
           <Box>
             <Group gap="xs">
-              <ThemeIcon color="red" variant="light" radius="md">
-                <IconPhotoScan size={18} />
+              <ThemeIcon color="red" variant="light" radius="sm">
+                <IconPhotoScan size={16} />
               </ThemeIcon>
               <Title order={2} size="h3">
                 Pending Uploads

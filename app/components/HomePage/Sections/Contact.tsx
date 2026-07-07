@@ -1,102 +1,61 @@
 "use client";
 
-import { TEXT_LIMITS } from "@/utils/constants";
+import { formatPhilippineMobileNumber } from "@/utils/functions";
+import { SettingsEnum } from "@/utils/types";
 import {
   Anchor,
   Box,
-  Button,
   Card,
-  Collapse,
   Container,
   Divider,
   Group,
   rem,
-  Select,
-  SimpleGrid,
   Stack,
   Text,
-  Textarea,
-  TextInput,
   ThemeIcon,
   Title,
 } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
-import {
-  IconBrandMessenger,
-  IconChevronDown,
-  IconChevronUp,
-  IconMail,
-  IconMapPin,
-  IconMessageCircle,
-  IconPhone,
-  IconSend,
-} from "@tabler/icons-react";
-import { Controller, useForm } from "react-hook-form";
+import { IconBrandFacebook, IconBrandMessenger, IconMail, IconPhone } from "@tabler/icons-react";
 
-const CONTACT_INFO = [
-  {
-    icon: IconPhone,
-    label: "Phone / Viber / WhatsApp",
-    value: "+63 912 345 6789",
-    href: "tel:+639123456789",
-  },
-  {
-    icon: IconMail,
-    label: "Email",
-    value: "hello@magiccollar.ph",
-    href: "mailto:hello@magiccollar.ph",
-  },
-  {
-    icon: IconMapPin,
-    label: "Address",
-    value: "123 Auto Parts St., Quezon City, Metro Manila",
-    href: "https://maps.google.com",
-  },
-  {
-    icon: IconBrandMessenger,
-    label: "Facebook Messenger",
-    value: "Message us on Messenger",
-    href: "https://m.me/magiccollarph",
-  },
-];
+// const INQUIRY_TYPES = [
+//   { value: "retail", label: "Retail Purchase" },
+//   { value: "reseller", label: "Reseller / Wholesale Inquiry" },
+//   { value: "fitment", label: "Fitment Question" },
+//   { value: "order", label: "Order / Delivery Status" },
+//   { value: "other", label: "Other" },
+// ];
 
-const INQUIRY_TYPES = [
-  { value: "retail", label: "Retail Purchase" },
-  { value: "reseller", label: "Reseller / Wholesale Inquiry" },
-  { value: "fitment", label: "Fitment Question" },
-  { value: "order", label: "Order / Delivery Status" },
-  { value: "other", label: "Other" },
-];
+// type FormValues = {
+//   name: string;
+//   email: string;
+//   phone: string;
+//   inquiryType: string;
+//   message: string;
+// };
 
-type FormValues = {
-  name: string;
-  email: string;
-  phone: string;
-  inquiryType: string;
-  message: string;
+type Props = {
+  socials: Record<SettingsEnum, string | null>;
 };
 
-const Contact = () => {
-  const [formOpened, { toggle: toggleForm }] = useDisclosure(false);
+const Contact = ({ socials }: Props) => {
+  // const [formOpened, { toggle: toggleForm }] = useDisclosure(false);
 
-  const {
-    register,
-    handleSubmit,
-    control,
-    formState: { errors },
-  } = useForm<FormValues>({
-    defaultValues: {
-      name: "",
-      email: "",
-      phone: "",
-      inquiryType: "",
-      message: "",
-    },
-  });
+  // const {
+  //   register,
+  //   handleSubmit,
+  //   control,
+  //   formState: { errors },
+  // } = useForm<FormValues>({
+  //   defaultValues: {
+  //     name: "",
+  //     email: "",
+  //     phone: "",
+  //     inquiryType: "",
+  //     message: "",
+  //   },
+  // });
 
-  const onSubmit = (values: FormValues) => {
-    console.log(values);
-  };
+  // const onSubmit = (values: FormValues) => {};
 
   return (
     <Box
@@ -113,7 +72,7 @@ const Contact = () => {
               Get in Touch
             </Text>
             <Title order={2} style={{ fontSize: rem(34), fontWeight: 700 }}>
-              We'd Love to Hear From You
+              We&apos;d Love to Hear From You
             </Title>
             <Text c="dimmed" size="md" maw={500} mx="auto">
               Reach out through any of the channels below, or send us a message directly.
@@ -123,8 +82,122 @@ const Contact = () => {
           <Card withBorder radius="md" p="xl">
             <Stack gap={0}>
               {/* Contact info rows */}
-              {CONTACT_INFO.map(({ icon: Icon, label, value, href }, i) => (
-                <Box key={label}>
+              <Box>
+                {socials.PHONE_NUMBER ? (
+                  <>
+                    <Group gap="md" py="md" align="center">
+                      <ThemeIcon
+                        size={40}
+                        radius="md"
+                        color="red"
+                        variant="light"
+                        style={{ flexShrink: 0 }}
+                      >
+                        <IconPhone />
+                      </ThemeIcon>
+                      <Stack gap={2} style={{ flex: 1 }}>
+                        <Text
+                          size="xs"
+                          c="dimmed"
+                          tt="uppercase"
+                          fw={600}
+                          style={{ letterSpacing: "0.06em" }}
+                        >
+                          Phone / Viber / WhatsApp
+                        </Text>
+                        <Anchor
+                          href={`tel:+63${socials.PHONE_NUMBER}`}
+                          size="sm"
+                          fw={500}
+                          c="inherit"
+                          underline="hover"
+                        >
+                          {formatPhilippineMobileNumber(socials.PHONE_NUMBER)}
+                        </Anchor>
+                      </Stack>
+                    </Group>
+                    <Divider />
+                  </>
+                ) : null}
+
+                {socials.EMAIL ? (
+                  <>
+                    <Group gap="md" py="md" align="center">
+                      <ThemeIcon
+                        size={40}
+                        radius="md"
+                        color="red"
+                        variant="light"
+                        style={{ flexShrink: 0 }}
+                      >
+                        <IconMail />
+                      </ThemeIcon>
+                      <Stack gap={2} style={{ flex: 1 }}>
+                        <Text
+                          size="xs"
+                          c="dimmed"
+                          tt="uppercase"
+                          fw={600}
+                          style={{ letterSpacing: "0.06em" }}
+                        >
+                          Email
+                        </Text>
+                        <Anchor
+                          href={`mailto:${socials.EMAIL}`}
+                          size="sm"
+                          fw={500}
+                          c="inherit"
+                          underline="hover"
+                        >
+                          {socials.EMAIL}
+                        </Anchor>
+                      </Stack>
+                    </Group>
+                    <Divider />
+                  </>
+                ) : null}
+
+                {socials.FACEBOOK ? (
+                  <>
+                    <Group gap="md" py="md" align="center">
+                      <ThemeIcon
+                        size={40}
+                        radius="md"
+                        color="red"
+                        variant="light"
+                        style={{ flexShrink: 0 }}
+                      >
+                        <IconBrandFacebook />
+                      </ThemeIcon>
+
+                      <Stack gap={2} style={{ flex: 1 }}>
+                        <Text
+                          size="xs"
+                          c="dimmed"
+                          tt="uppercase"
+                          fw={600}
+                          style={{ letterSpacing: "0.06em" }}
+                        >
+                          Facebook
+                        </Text>
+                        <Anchor
+                          href={socials.FACEBOOK}
+                          size="sm"
+                          fw={500}
+                          c="inherit"
+                          underline="hover"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {socials.FACEBOOK}
+                        </Anchor>
+                      </Stack>
+                    </Group>
+                    <Divider />
+                  </>
+                ) : null}
+
+                {socials.MESSENGER ? (
                   <Group gap="md" py="md" align="center">
                     <ThemeIcon
                       size={40}
@@ -133,8 +206,9 @@ const Contact = () => {
                       variant="light"
                       style={{ flexShrink: 0 }}
                     >
-                      <Icon size={20} />
+                      <IconBrandMessenger />
                     </ThemeIcon>
+
                     <Stack gap={2} style={{ flex: 1 }}>
                       <Text
                         size="xs"
@@ -143,29 +217,28 @@ const Contact = () => {
                         fw={600}
                         style={{ letterSpacing: "0.06em" }}
                       >
-                        {label}
+                        Messenger
                       </Text>
                       <Anchor
-                        href={href}
+                        href={socials.MESSENGER}
                         size="sm"
                         fw={500}
                         c="inherit"
                         underline="hover"
-                        target={href.startsWith("http") ? "_blank" : undefined}
-                        rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
+                        target="_blank"
+                        rel="noopener noreferrer"
                       >
-                        {value}
+                        {socials.MESSENGER}
                       </Anchor>
                     </Stack>
                   </Group>
-                  {i < CONTACT_INFO.length - 1 && <Divider />}
-                </Box>
-              ))}
+                ) : null}
+              </Box>
 
-              <Divider mt="xs" />
+              {/* <Divider mt="xs" /> */}
 
               {/* Toggle button */}
-              <Box pt="md">
+              {/* <Box pt="md">
                 <Button
                   variant={formOpened ? "light" : "filled"}
                   color="red"
@@ -179,10 +252,10 @@ const Contact = () => {
                 >
                   {formOpened ? "Hide Message Form" : "Send Us a Message"}
                 </Button>
-              </Box>
+              </Box> */}
 
               {/* Collapsible form */}
-              <Collapse expanded={formOpened}>
+              {/* <Collapse expanded={formOpened}>
                 <form onSubmit={handleSubmit(onSubmit)}>
                   <Stack gap="md" pt="md">
                     <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
@@ -296,7 +369,7 @@ const Contact = () => {
                     </Button>
                   </Stack>
                 </form>
-              </Collapse>
+              </Collapse> */}
             </Stack>
           </Card>
         </Stack>

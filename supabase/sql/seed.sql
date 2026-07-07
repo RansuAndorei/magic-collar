@@ -26,7 +26,9 @@ INSERT INTO pickup_address_table (pickup_address_latitude, pickup_address_longit
 
 INSERT INTO system_setting_table (system_setting_key, system_setting_value) VALUES
 ('BATCH_LIMIT', 32),
+('ORDER_EXPIRATION_IN_DAYS', 30),
 ('EMAIL', 'magiccollar@gmail.com'),
+('PHONE_NUMBER', '9123456789'),
 ('MESSENGER', 'https://www.m.me/MagicCollarPH'),
 ('FACEBOOK', 'https://www.facebook.com/MagicCollarPH'),
 ('TIKTOK', 'https://www.tiktok.com/discover/magic-collar-car'),

@@ -1,9 +1,5 @@
 import {
   IconAlertTriangle,
-  IconBrandFacebook,
-  IconBrandInstagram,
-  IconBrandTiktok,
-  IconBrandYoutube,
   IconCar,
   IconCash,
   IconChartBar,
@@ -15,9 +11,9 @@ import {
   IconPackage,
   IconPackageExport,
   IconPackages,
-  IconReceipt,
   IconPhone,
   IconPhotoScan,
+  IconReceipt,
   IconSettings2,
   IconShieldCheck,
   IconShip,
@@ -219,13 +215,6 @@ export const FOOTER_LINKS = {
     },
   ],
 };
-
-export const SOCIAL_LINKS = [
-  { icon: IconBrandFacebook, label: "Facebook", color: "#1877F2" },
-  { icon: IconBrandInstagram, label: "Instagram", color: "#E1306C" },
-  { icon: IconBrandYoutube, label: "YouTube", color: "#FF0000" },
-  { icon: IconBrandTiktok, label: "TikTok", color: "#00c2bb" },
-];
 
 export const SKIPPED_ERROR_MESSAGES = ["Email already registered."];
 
@@ -515,37 +504,31 @@ export const ADMIN_NAV_GROUP = [
         label: "Pickup Addresses",
         icon: IconMapPin,
         meta: "Pickup branches and map pins",
-        href: "/admin/settings/pickup-addresses",
+        href: "/admin/pickup-addresses",
       },
       {
         label: "Payment Channels",
         icon: IconReceipt,
         meta: "Bank, wallet, and QR accounts",
-        href: "/admin/settings/payment-channels",
+        href: "/admin/payment-channels",
       },
       {
         label: "Couriers",
         icon: IconTruckDelivery,
         meta: "Delivery partner list",
-        href: "/admin/settings/couriers",
+        href: "/admin/couriers",
       },
       {
-        label: "Contact Details",
+        label: "Contact & Social Links",
         icon: IconPhone,
-        meta: "Email, phone, and Messenger",
-        href: "/admin/settings/contact-details",
+        meta: "Email, Phone, Messenger, Facebook, Instagram, etc.",
+        href: "/admin/contacts",
       },
       {
-        label: "Social Links",
-        icon: IconBrandFacebook,
-        meta: "Facebook, Instagram, YouTube, TikTok",
-        href: "/admin/settings/social-links",
-      },
-      {
-        label: "Batch Limit",
+        label: "Process",
         icon: IconSettings2,
-        meta: "Maximum item count per batch",
-        href: "/admin/settings/batch-limit",
+        meta: "Process settings",
+        href: "/admin/process",
       },
     ],
   },

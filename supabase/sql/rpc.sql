@@ -361,6 +361,7 @@ BEGIN
   FROM (
     SELECT
       (item->>'quantity')::INT AS quantity,
+      car_id,
       car_model_code,
       car_model_year_start,
       car_model_year_end,
@@ -534,7 +535,8 @@ BEGIN
         order_item_magic_collar_all_quantity,
         order_item_car_image_attachment_id,
         order_item_order_id,
-        order_item_batch_id
+        order_item_batch_id,
+        order_item_car_id
       ) VALUES (
         var_stock_deduct,
         (var_item->>'magic_collar_price')::NUMERIC,
@@ -551,7 +553,8 @@ BEGIN
         (var_item->>'magic_collar_all_quantity')::INT,
         (var_item->>'car_image_attachment_id')::UUID,
         var_order_id,
-        NULL  -- fulfilled from stock, no batch needed
+        NULL,  -- fulfilled from stock, no batch needed
+        (var_item->>'car_id')::UUID
       )
       RETURNING order_item_id
       INTO var_order_item_id;
@@ -644,7 +647,8 @@ BEGIN
         order_item_magic_collar_all_quantity,
         order_item_car_image_attachment_id,
         order_item_order_id,
-        order_item_batch_id
+        order_item_batch_id,
+        order_item_car_id
       ) VALUES (
         var_item_insert_quantity,
         (var_item->>'magic_collar_price')::NUMERIC,
@@ -661,7 +665,8 @@ BEGIN
         (var_item->>'magic_collar_all_quantity')::INT,
         (var_item->>'car_image_attachment_id')::UUID,
         var_order_id,
-        var_current_batch_id
+        var_current_batch_id,
+        (var_item->>'car_id')::UUID
       )
       RETURNING order_item_id
       INTO var_order_item_id;
@@ -2279,5 +2284,80 @@ BEGIN
     courier_updated_by_admin_user_id = input_admin_user_id,
     courier_date_updated = NOW()
   WHERE courier_id = input_courier_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION update_settings(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_updates JSONB := input_data->'updates';
+  input_admin_user_id UUID := (input_data->>'adminUserId')::UUID;
+BEGIN
+  UPDATE system_setting_table
+  SET
+    system_setting_value = u.value,
+    system_setting_updated_by_admin_user_id = input_admin_user_id,
+    system_setting_date_updated = NOW()
+  FROM JSONB_TO_RECORDSET(input_updates) AS u(key settings, value TEXT)
+  WHERE system_setting_key = u.key;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION fetch_top_items(input_data JSONB)
+RETURNS JSONB
+AS $$
+DECLARE
+  input_number_of_item INT := (input_data->>'numberOfItem')::INT;
+  return_data JSONB;
+BEGIN
+  WITH car_data AS (
+    SELECT
+      car_table.car_id,
+      SUM(order_item_quantity) AS order_count
+    FROM car_table
+    LEFT JOIN order_item_table
+      ON order_item_car_id = car_id
+      AND order_item_is_disabled = false
+    WHERE car_is_disabled = false
+      AND car_is_available = true
+    GROUP BY car_id
+    ORDER BY order_count DESC NULLS LAST, car_date_created DESC
+    LIMIT input_number_of_item
+  )
+  SELECT COALESCE(
+    JSONB_AGG(
+      TO_JSONB(car_table.*) || JSONB_BUILD_OBJECT(
+        'car_make', make,
+        'car_model', model,
+        'car_order_count', order_count,
+        'car_magic_collar', TO_JSONB(magic_collar_table.*),
+        'car_image_attachment', TO_JSONB(attachment_table.*)
+      )
+      ORDER BY order_count DESC NULLS LAST
+    ),
+    '[]'::JSONB
+  )
+  INTO return_data
+  FROM car_data
+  INNER JOIN car_table
+    ON car_table.car_id = car_data.car_id
+  INNER JOIN make_table
+    ON make_id = car_make_id
+    AND make_is_disabled = false
+    AND make_is_available = true
+  INNER JOIN model_table
+    ON model_id = car_model_id
+    AND model_is_disabled = false
+    AND model_is_available = true
+  INNER JOIN magic_collar_table
+    ON magic_collar_id = car_magic_collar_id
+    AND magic_collar_is_disabled = false
+    AND magic_collar_is_available = true
+  INNER JOIN attachment_table
+    ON attachment_id = car_image_attachment_id
+    AND attachment_is_disabled = false;
+
+  RETURN return_data;
 END;
 $$ LANGUAGE plpgsql;

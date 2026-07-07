@@ -486,8 +486,8 @@ const CheckoutPage = ({ carList, checkoutAddressList, pickupAddressList, courier
                             <Text fw={500}>Delivery address required</Text>
                             <Text size="sm">
                               Please select a saved address or add a new one from your{" "}
-                              <Link href="/user/profile">profile settings</Link>. If you'd rather
-                              collect your order in person, choose the pickup option.
+                              <Link href="/user/profile">profile settings</Link>. If you&apos;d
+                              rather collect your order in person, choose the pickup option.
                             </Text>
                           </Alert>
                         )}

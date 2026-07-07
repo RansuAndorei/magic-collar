@@ -1,14 +1,16 @@
 "use client";
 
+import { SettingsEnum } from "@/utils/types";
 import { usePathname } from "next/navigation";
 import Footer from "./Footer/Footer";
 import Header from "./Header/Header";
 
 type Props = {
   children?: React.ReactNode;
+  socials: Record<SettingsEnum, string | null> | null;
 };
 
-const HomeLayout = ({ children }: Props) => {
+const HomeLayout = ({ children, socials }: Props) => {
   const pathname = usePathname();
   const isAdminPath = pathname.startsWith("/admin");
 
@@ -16,7 +18,7 @@ const HomeLayout = ({ children }: Props) => {
     <>
       <Header />
       {children}
-      {!isAdminPath ? <Footer /> : null}
+      {!isAdminPath && <Footer socials={socials} />}
     </>
   );
 };

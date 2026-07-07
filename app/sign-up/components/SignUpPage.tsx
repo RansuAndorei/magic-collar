@@ -47,7 +47,7 @@ const SignUpPage = () => {
     register,
     handleSubmit,
     control,
-    watch,
+    getValues,
     formState: { errors },
   } = useForm<FormValues>({
     defaultValues: {
@@ -57,8 +57,6 @@ const SignUpPage = () => {
       agreeToTerms: false,
     },
   });
-
-  const password = watch("password");
 
   const onSubmit = async (data: FormValues) => {
     try {
@@ -186,7 +184,8 @@ const SignUpPage = () => {
                     error={errors.confirmPassword?.message}
                     {...register("confirmPassword", {
                       required: "Please confirm your password",
-                      validate: (v) => v === password || "Passwords do not match",
+                      validate: (value) =>
+                        value === getValues("password") || "Passwords do not match",
                     })}
                     maxLength={TEXT_LIMITS.long}
                   />

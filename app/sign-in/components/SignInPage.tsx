@@ -43,7 +43,7 @@ const SignInPage = () => {
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<FormValues>({
     defaultValues: { email: "", password: "", remember: false },
   });
@@ -182,7 +182,7 @@ const SignInPage = () => {
           </Card>
 
           <Text size="sm" c="dimmed" style={{ textAlign: "center" }}>
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Text component={Link} href="/sign-up" c="red.5" fw={500}>
               Create one
             </Text>

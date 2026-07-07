@@ -5,7 +5,7 @@
     "source.fixAll.eslint": "explicit",
     "source.organizeImports": "explicit"
   },
-  "eslint.validate": ["javascript", "typescript", "javascriptreact", "typescriptreact"],
+  "eslint.validate": ["javascript", "typescript", "javascriptreact", "typescrsiptreact"],
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "[sql]": {
     "editor.defaultFormatter": "bradymholt.pgformatter",

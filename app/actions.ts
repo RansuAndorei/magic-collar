@@ -1,6 +1,12 @@
 import { SKIPPED_ERROR_MESSAGES } from "@/utils/constants";
 import { Database } from "@/utils/database";
-import { AttachmentBucketType, ErrorTableInsert, UserTableInsert } from "@/utils/types";
+import {
+  AttachmentBucketType,
+  CarShopType,
+  ErrorTableInsert,
+  SettingsEnum,
+  UserTableInsert,
+} from "@/utils/types";
 import { SupabaseClient } from "@supabase/supabase-js";
 import Compressor from "compressorjs";
 import { v4 } from "uuid";
@@ -91,4 +97,35 @@ export const fetchUserProfile = async (
     .maybeSingle();
   if (error) throw error;
   return data;
+};
+
+export const fetchTopItems = async (
+  supabaseClient: SupabaseClient<Database>,
+  params: {
+    numberOfItem: number;
+  },
+) => {
+  const { data, error } = await supabaseClient.rpc("fetch_top_items", { input_data: params });
+  if (error) throw error;
+  return data as CarShopType[];
+};
+
+export const fetchSocials = async (
+  supabaseClient: SupabaseClient<Database>,
+  params: { socials: SettingsEnum[] },
+) => {
+  const { socials } = params;
+  const { data, error } = await supabaseClient
+    .from("system_setting_table")
+    .select("system_setting_key, system_setting_value")
+    .in("system_setting_key", socials);
+  if (error) throw error;
+
+  return data.reduce(
+    (acc, { system_setting_key, system_setting_value }) => {
+      acc[system_setting_key] = system_setting_value;
+      return acc;
+    },
+    {} as Record<SettingsEnum, string | null>,
+  );
 };

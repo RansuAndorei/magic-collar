@@ -70,6 +70,7 @@ CREATE TYPE payment_description AS ENUM(
 
 CREATE TYPE settings AS ENUM (
   'BATCH_LIMIT',
+  'ORDER_EXPIRATION_IN_DAYS',
   'EMAIL',
   'PHONE_NUMBER',
   'MESSENGER',
@@ -378,6 +379,7 @@ CREATE TABLE order_item_table(
   order_item_magic_collar_rear_quantity INT,
   order_item_magic_collar_all_quantity INT,
   
+  order_item_car_id UUID REFERENCES car_table(car_id) NOT NULL,
   order_item_car_image_attachment_id UUID REFERENCES attachment_table(attachment_id) NOT NULL,
   order_item_order_id UUID REFERENCES order_table(order_id) NOT NULL,
   order_item_batch_id UUID REFERENCES batch_table(batch_id),

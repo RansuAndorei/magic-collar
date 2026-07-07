@@ -129,7 +129,6 @@ const AdminBatchDetailPage = ({ batch, batchLimit }: Props) => {
       }
     } finally {
       setIsLoading(false);
-      null;
     }
   };
 

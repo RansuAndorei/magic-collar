@@ -23,7 +23,7 @@ const StepDone = ({ firstName }: Props) => {
       </Box>
       <Stack gap={6}>
         <Title order={3} style={{ fontSize: rem(20), fontWeight: 800 }}>
-          You're all set, {firstName}!
+          You&apos;re all set, {firstName}!
         </Title>
         <Text c="dimmed" size="sm" maw={340}>
           Your profile and delivery address have been saved. You can now start shopping for your

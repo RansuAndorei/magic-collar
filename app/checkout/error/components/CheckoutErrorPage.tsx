@@ -71,4 +71,3 @@ const CheckoutErrorPage = () => {
 };
 
 export default CheckoutErrorPage;
-

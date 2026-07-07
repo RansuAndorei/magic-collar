@@ -46,6 +46,35 @@ const MagicCollarModal = ({ opened, setOpened, defaultValues, refreshTables }: P
     defaultValues,
   });
 
+  const handleFetchConnectedCars = async (magicCollarId: string) => {
+    if (!userData) return;
+    setIsFetchingCars(true);
+    try {
+      const data = await getConnectedCars(supabaseClient, {
+        magicCollarId,
+      });
+      setConnectedCars(data);
+    } catch (e) {
+      notifications.show({
+        message: "Something went wrong. Please try again later.",
+        color: "red",
+      });
+      if (isAppError(e)) {
+        await insertError(supabaseClient, {
+          errorTableInsert: {
+            error_message: e.message,
+            error_url: pathname,
+            error_function: "handleFetchConnectedCars",
+            error_user_email: userData.email,
+            error_user_id: userData.id,
+          },
+        });
+      }
+    } finally {
+      setIsFetchingCars(false);
+    }
+  };
+
   useEffect(() => {
     if (opened) {
       reset(defaultValues);
@@ -114,35 +143,6 @@ const MagicCollarModal = ({ opened, setOpened, defaultValues, refreshTables }: P
       }
     } finally {
       setIsSavingItem(false);
-    }
-  };
-
-  const handleFetchConnectedCars = async (magicCollarId: string) => {
-    if (!userData) return;
-    setIsFetchingCars(true);
-    try {
-      const data = await getConnectedCars(supabaseClient, {
-        magicCollarId,
-      });
-      setConnectedCars(data);
-    } catch (e) {
-      notifications.show({
-        message: "Something went wrong. Please try again later.",
-        color: "red",
-      });
-      if (isAppError(e)) {
-        await insertError(supabaseClient, {
-          errorTableInsert: {
-            error_message: e.message,
-            error_url: pathname,
-            error_function: "handleFetchConnectedCars",
-            error_user_email: userData.email,
-            error_user_id: userData.id,
-          },
-        });
-      }
-    } finally {
-      setIsFetchingCars(false);
     }
   };
 

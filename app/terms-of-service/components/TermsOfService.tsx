@@ -173,10 +173,12 @@ const TermsOfServicePage = () => {
                   Legal Agreement
                 </Text>
                 <Text size="sm" c="dimmed" style={{ lineHeight: 1.7 }}>
-                  These Terms of Service ("Terms") constitute a legally binding agreement between
-                  you ("Customer", "Reseller", or "Visitor") and Magic Collar Car Parts ("Magic
-                  Collar", "we", "us", or "our"), a business registered in the Philippines. These
-                  Terms govern your use of our website, products, and services.
+                  These Terms of Service (&ldquo;Terms&ldquo;) constitute a legally binding
+                  agreement between you (&ldquo;Customer&ldquo;, &ldquo;Reseller&ldquo;, or
+                  &ldquo;Visitor&ldquo;) and Magic Collar Car Parts (&ldquo;Magic Collar&ldquo;,
+                  &ldquo;we&ldquo;, &ldquo;us&ldquo;, or &ldquo;our&ldquo;), a business registered
+                  in the Philippines. These Terms govern your use of our website, products, and
+                  services.
                 </Text>
               </Stack>
             </Group>

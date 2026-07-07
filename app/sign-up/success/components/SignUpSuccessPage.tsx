@@ -133,7 +133,7 @@ const SignUpSuccessPage = () => {
               </Stack>
 
               <Text c="dimmed" size="xs" mt={4}>
-                Can't find it? Check your spam or junk folder.
+                Can&apos;t find it? Check your spam or junk folder.
               </Text>
             </Stack>
           </Card>

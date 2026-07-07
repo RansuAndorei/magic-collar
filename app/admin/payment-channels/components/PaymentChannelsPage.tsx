@@ -34,19 +34,18 @@ import { useDebouncedValue } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import {
-  IconMapPin,
   IconPencil,
   IconPlayerPause,
   IconPlayerPlay,
   IconPlus,
   IconQrcode,
+  IconReceipt,
   IconSearch,
   IconTrash,
 } from "@tabler/icons-react";
 import { DataTable, DataTableColumn } from "mantine-datatable";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-
 import {
   checkPaymentChannelCount,
   deletePaymentChannel,
@@ -470,8 +469,8 @@ const PaymentChannelsPage = () => {
           <Group justify="space-between" align="flex-end" mb="md">
             <Box>
               <Group gap="xs">
-                <ThemeIcon color="red" variant="light" radius="md">
-                  <IconMapPin size={18} />
+                <ThemeIcon color="red" variant="light" radius="sm">
+                  <IconReceipt size={16} />
                 </ThemeIcon>
                 <Title order={2} size="h3">
                   Channel List

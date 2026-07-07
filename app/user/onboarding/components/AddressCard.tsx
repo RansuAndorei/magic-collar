@@ -55,19 +55,23 @@ const AddressCard = ({ index, onRemove, onSetDefault, isDefault, isOnly, regionL
     // level 2: Province
     // level 3: City
     // level 4: Barangay
-    let loadingList = [];
+    const loadingList = [];
     if (level < 2) {
       loadingList.push("province");
       setValue(`addresses.${index}.provinceOptions`, []);
       setValue(`addresses.${index}.province`, null);
     }
     if (level < 3) {
-      !loadingList.length && loadingList.push("city");
+      if (!loadingList.length) {
+        loadingList.push("city");
+      }
       setValue(`addresses.${index}.cityOptions`, []);
       setValue(`addresses.${index}.city`, null);
     }
     if (level < 4) {
-      !loadingList.length && loadingList.push("barangay");
+      if (!loadingList.length) {
+        loadingList.push("barangay");
+      }
       setValue(`addresses.${index}.barangayOptions`, []);
       setValue(`addresses.${index}.barangay`, null);
     }

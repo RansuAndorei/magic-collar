@@ -180,7 +180,6 @@ const MagicCollarList = () => {
         setLoadingRow(null);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [userData, pathname],
   );
 
@@ -260,7 +259,6 @@ const MagicCollarList = () => {
         setLoadingRow(null);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [userData, pathname],
   );
 

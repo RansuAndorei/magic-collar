@@ -1,18 +1,15 @@
 "use client";
 
 import { fetchUserProfile, insertError } from "@/app/actions";
-// import { checkIfOnboarded, fetchAdminAccess, fetchUserProfile, insertError } from "@/app/actions";
 import { useUserActions } from "@/stores/useUserStore";
 import { isAppError } from "@/utils/functions";
 import { supabaseClient } from "@/utils/supabase/client";
-// import { UserProfileType } from "@/utils/types";
 import { User } from "@supabase/supabase-js";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 export function useAuthListener() {
-  const { setUserData, setUserProfile, setIsLoading, reset, setHasInitialized, setIsAdmin } =
-    useUserActions();
+  const { setUserData, setUserProfile, setIsLoading, reset, setHasInitialized } = useUserActions();
   const mounted = useRef(true);
   const pathname = usePathname();
   const currentUserIdRef = useRef<string | null>(null);
@@ -113,17 +110,17 @@ export function useAuthListener() {
           }
         }
       } catch (e) {
-        // if (isAppError(e)) {
-        //   await insertError(supabaseClient, {
-        //     errorTableInsert: {
-        //       error_message: e.message,
-        //       error_url: pathname,
-        //       error_function: "onAuthStateChange",
-        //       error_user_email: user?.email,
-        //       error_user_id: user?.id,
-        //     },
-        //   });
-        // }
+        if (isAppError(e)) {
+          await insertError(supabaseClient, {
+            errorTableInsert: {
+              error_message: e.message,
+              error_url: pathname,
+              error_function: "onAuthStateChange",
+              error_user_email: user?.email,
+              error_user_id: user?.id,
+            },
+          });
+        }
         if (mounted.current) reset();
       } finally {
         if (mounted.current && !isAuthPage && shouldShowLoading(event)) {
