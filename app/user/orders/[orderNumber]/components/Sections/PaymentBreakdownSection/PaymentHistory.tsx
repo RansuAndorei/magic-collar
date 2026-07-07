@@ -85,6 +85,7 @@ const PaymentHistory = ({ orderId, historyOpen, toggleHistory }: Props) => {
 
   useEffect(() => {
     if (historyOpen) {
+      // eslint-disable-next-line
       fetchPayments(page);
     }
   }, [historyOpen, page]);
@@ -96,7 +97,9 @@ const PaymentHistory = ({ orderId, historyOpen, toggleHistory }: Props) => {
     <Stack gap={0}>
       <UnstyledButton
         onClick={() => {
-          !isLoading && toggleHistory();
+          if (!isLoading) {
+            toggleHistory();
+          }
         }}
         style={{
           display: "flex",

@@ -269,14 +269,14 @@ const ShopPage = ({ makeList, modelList, carList }: Props) => {
 
   const totalCount = filteredAndSortedProducts.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / SHOP_PAGE_SIZE));
+
+  if (page > totalPages) {
+    setPage(totalPages);
+  }
   const products = useMemo(() => {
     const start = (page - 1) * SHOP_PAGE_SIZE;
     return filteredAndSortedProducts.slice(start, start + SHOP_PAGE_SIZE);
   }, [filteredAndSortedProducts, page]);
-
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
 
   const activeFilterCount = [
     filters.makeId,

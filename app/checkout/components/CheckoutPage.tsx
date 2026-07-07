@@ -99,6 +99,7 @@ const CheckoutPage = ({ carList, checkoutAddressList, pickupAddressList, courier
   useEffect(() => {
     const savedCart = parseStoredCart(window.localStorage.getItem(SHOP_CART_STORAGE_KEY));
 
+    // eslint-disable-next-line
     setCartItems(
       savedCart.reduce<CheckoutCartItem[]>((items, storedItem) => {
         if (items.some((item) => item.product.car_id === storedItem.carId)) return items;

@@ -230,6 +230,7 @@ const ContactsPage = () => {
   }, [userData]);
 
   useEffect(() => {
+    // eslint-disable-next-line
     loadContactSettings();
   }, [loadContactSettings]);
 

@@ -559,3 +559,5 @@ export const REASON_FOR_REJECTION_OPTION = [
   "Payment could not be verified",
   "Other",
 ];
+
+export const MAX_ADDRESSES = 5;

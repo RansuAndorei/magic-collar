@@ -2,7 +2,7 @@
 
 import { insertError, uploadFile } from "@/app/actions";
 import { useUserActions, useUserData } from "@/stores/useUserStore";
-import { LOGO_PATH, MAX_FILE_SIZE } from "@/utils/constants";
+import { LOGO_PATH, MAX_ADDRESSES, MAX_FILE_SIZE } from "@/utils/constants";
 import { isAppError } from "@/utils/functions";
 import { supabaseClient } from "@/utils/supabase/client";
 import { OnboardingAddressType, OnboardingFormValuesType, OptionType } from "@/utils/types";
@@ -111,7 +111,20 @@ const OnboardingPage = ({ regionList }: Props) => {
     resetRef.current?.();
   };
 
-  const handleAddAddress = () => append({ ...DEFAULT_ADDRESS, isDefault: false });
+  const handleAddAddress = () => {
+    if (fields.length >= MAX_ADDRESSES) {
+      notifications.show({
+        message: "You can only add up to 5 addresses.",
+        color: "yellow",
+      });
+      return;
+    }
+
+    append({
+      ...DEFAULT_ADDRESS,
+      isDefault: false,
+    });
+  };
 
   const handleRemoveAddress = (index: number) => {
     const wasDefault = getValues(`addresses.${index}.isDefault`);

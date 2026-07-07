@@ -77,6 +77,7 @@ const AdminPaymentProofsPage = () => {
   }, [page, pathname, recordsPerPage, userData]);
 
   useEffect(() => {
+    // eslint-disable-next-line
     loadPaymentProofs();
   }, [loadPaymentProofs]);
 

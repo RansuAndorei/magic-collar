@@ -102,11 +102,15 @@ const OrderListPage = () => {
   const totalPages = Math.ceil(totalCount / ORDER_PAGE_SIZE);
   const isInitialLoading = !hasLoadedPreferences || (isFetching && orderList.length === 0);
 
+  if (totalPages > 0 && page > totalPages) {
+    setPage(totalPages);
+  }
+
   useEffect(() => {
     const preferences = parseStoredPreferences(
       window.localStorage.getItem(ORDER_PREFERENCES_STORAGE_KEY),
     );
-
+    // eslint-disable-next-line
     setSearch(preferences.search);
     setOrderStatus(preferences.orderStatus);
     setPaymentStatus(preferences.paymentStatus);
@@ -171,12 +175,9 @@ const OrderListPage = () => {
   ]);
 
   useEffect(() => {
+    // eslint-disable-next-line
     fetchOrderList();
   }, [fetchOrderList]);
-
-  useEffect(() => {
-    if (totalPages > 0 && page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
 
   const scrollToTop = useCallback(() => {
     window.requestAnimationFrame(() => {

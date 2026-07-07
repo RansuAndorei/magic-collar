@@ -38,6 +38,33 @@ type Props = {
 };
 
 const PickupAddressModal = ({ opened, setOpened, defaultValues, refreshTable }: Props) => {
+  return (
+    <Modal
+      opened={opened}
+      onClose={() => setOpened(false)}
+      title={
+        <Text fw={800}>
+          {defaultValues.pickupAddressId ? "Edit Pickup Address" : "Add Pickup Address"}
+        </Text>
+      }
+      size="lg"
+      centered
+      closeOnEscape
+      closeOnClickOutside
+    >
+      <PickupAddressModalForm
+        key={defaultValues.pickupAddressId ?? "new"}
+        setOpened={setOpened}
+        defaultValues={defaultValues}
+        refreshTable={refreshTable}
+      />
+    </Modal>
+  );
+};
+
+type FormProps = Omit<Props, "opened">;
+
+const PickupAddressModalForm = ({ setOpened, defaultValues, refreshTable }: FormProps) => {
   const userData = useUserData();
   const pathname = usePathname();
   const [isSaving, setIsSaving] = useState(false);
@@ -48,7 +75,6 @@ const PickupAddressModal = ({ opened, setOpened, defaultValues, refreshTable }: 
     control,
     register,
     handleSubmit,
-    reset,
     setValue,
     getValues,
     formState: { errors, isDirty },
@@ -59,12 +85,7 @@ const PickupAddressModal = ({ opened, setOpened, defaultValues, refreshTable }: 
   const barangayList = useWatch({ control, name: "barangayOptions" }) ?? [];
 
   useEffect(() => {
-    if (!opened) return;
-    reset(defaultValues);
-  }, [defaultValues, opened, reset]);
-
-  useEffect(() => {
-    if (!opened || regionList.length) return;
+    if (regionList.length) return;
 
     const loadRegionList = async () => {
       if (!userData) return;
@@ -90,10 +111,10 @@ const PickupAddressModal = ({ opened, setOpened, defaultValues, refreshTable }: 
       }
     };
     loadRegionList();
-  }, [opened, regionList.length, userData, pathname]);
+  }, []);
 
   useEffect(() => {
-    if (!opened || !defaultValues.pickupAddressId) return;
+    if (!defaultValues.pickupAddressId) return;
 
     const hydrateExistingChain = async () => {
       if (!userData) return;
@@ -165,7 +186,7 @@ const PickupAddressModal = ({ opened, setOpened, defaultValues, refreshTable }: 
       }
     };
     hydrateExistingChain();
-  }, [opened, defaultValues.pickupAddressId]);
+  }, [defaultValues.pickupAddressId]);
 
   const resetOptions = (level: number, value: string | null) => {
     const loadingList: string[] = [];
@@ -378,246 +399,232 @@ const PickupAddressModal = ({ opened, setOpened, defaultValues, refreshTable }: 
   };
 
   return (
-    <Modal
-      opened={opened}
-      onClose={() => setOpened(false)}
-      title={
-        <Text fw={800}>
-          {defaultValues.pickupAddressId ? "Edit Pickup Address" : "Add Pickup Address"}
-        </Text>
-      }
-      size="lg"
-      centered
-      closeOnEscape={!isSaving}
-      closeOnClickOutside={!isSaving}
-    >
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <Stack gap="md">
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-            <Controller
-              name="region"
-              control={control}
-              rules={{ required: "Region is required" }}
-              render={({ field }) => (
-                <Select
-                  label="Region"
-                  data={regionList}
-                  required
-                  searchable
-                  error={errors.region?.message}
-                  {...field}
-                  value={field.value}
-                  onChange={(value) => {
-                    field.onChange(value);
-                    resetOptions(1, value);
-                    if (value) handleRegionChange(value);
-                  }}
-                />
-              )}
-            />
-            <Controller
-              name="province"
-              control={control}
-              rules={{ required: "Province is required" }}
-              render={({ field }) => (
-                <Select
-                  label="Province"
-                  data={provinceList}
-                  required
-                  searchable
-                  error={errors.province?.message}
-                  {...field}
-                  value={field.value}
-                  onChange={(value) => {
-                    field.onChange(value);
-                    resetOptions(2, value);
-                    if (value) handleProvinceChange(value);
-                  }}
-                  loading={loadingFieldList.includes("province")}
-                  variant={provinceList.length ? "default" : "filled"}
-                />
-              )}
-            />
-          </SimpleGrid>
-
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-            <Controller
-              name="city"
-              control={control}
-              rules={{ required: "City / Municipality is required" }}
-              render={({ field }) => (
-                <Select
-                  label="City / Municipality"
-                  data={cityList}
-                  required
-                  searchable
-                  error={errors.city?.message}
-                  {...field}
-                  value={field.value}
-                  onChange={(value) => {
-                    field.onChange(value);
-                    resetOptions(3, value);
-                    if (value) handleCityChange(value);
-                  }}
-                  loading={loadingFieldList.includes("city")}
-                  variant={cityList.length ? "default" : "filled"}
-                />
-              )}
-            />
-            <Controller
-              name="barangay"
-              control={control}
-              rules={{ required: "Barangay is required" }}
-              render={({ field }) => (
-                <Select
-                  label="Barangay"
-                  data={barangayList}
-                  required
-                  searchable
-                  error={errors.barangay?.message}
-                  {...field}
-                  value={field.value}
-                  onChange={(value) => {
-                    field.onChange(value);
-                    resetOptions(4, value);
-                    if (value) handleBarangayChange(value);
-                  }}
-                  loading={loadingFieldList.includes("barangay")}
-                  variant={barangayList.length ? "default" : "filled"}
-                />
-              )}
-            />
-          </SimpleGrid>
-
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-            <Controller
-              name="postalCode"
-              control={control}
-              rules={{ required: "Postal code is required" }}
-              render={({ field }) => (
-                <TextInput
-                  label="Postal Code"
-                  readOnly
-                  variant="filled"
-                  styles={{ input: { cursor: "not-allowed", opacity: 0.6 } }}
-                  error={errors.postalCode?.message}
-                  {...field}
-                  value={field.value ?? ""}
-                  required
-                />
-              )}
-            />
-            <Controller
-              name="isAvailable"
-              control={control}
-              render={({ field: { value, onChange, ...field } }) => (
-                <Switch
-                  mt="xl"
-                  label="Available for pickup"
-                  checked={value}
-                  onChange={(event) => onChange(event.currentTarget.checked)}
-                  {...field}
-                />
-              )}
-            />
-          </SimpleGrid>
-
-          <TextInput
-            label="Street"
-            placeholder="House no., street name"
-            required
-            maxLength={TEXT_LIMITS.long}
-            error={errors.street?.message}
-            {...register("street", { required: "Street is required" })}
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <Stack gap="md">
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+          <Controller
+            name="region"
+            control={control}
+            rules={{ required: "Region is required" }}
+            render={({ field }) => (
+              <Select
+                label="Region"
+                data={regionList}
+                required
+                searchable
+                error={errors.region?.message}
+                {...field}
+                value={field.value}
+                onChange={(value) => {
+                  field.onChange(value);
+                  resetOptions(1, value);
+                  if (value) handleRegionChange(value);
+                }}
+              />
+            )}
           />
+          <Controller
+            name="province"
+            control={control}
+            rules={{ required: "Province is required" }}
+            render={({ field }) => (
+              <Select
+                label="Province"
+                data={provinceList}
+                required
+                searchable
+                error={errors.province?.message}
+                {...field}
+                value={field.value}
+                onChange={(value) => {
+                  field.onChange(value);
+                  resetOptions(2, value);
+                  if (value) handleProvinceChange(value);
+                }}
+                loading={loadingFieldList.includes("province")}
+                variant={provinceList.length ? "default" : "filled"}
+              />
+            )}
+          />
+        </SimpleGrid>
 
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-            <Controller
-              name="latitude"
-              control={control}
-              rules={{
-                required: "Latitude is required",
-                min: {
-                  value: -90,
-                  message: "Latitude must be between -90 and 90",
-                },
-                max: {
-                  value: 90,
-                  message: "Latitude must be between -90 and 90",
-                },
-              }}
-              render={({ field }) => (
-                <NumberInput
-                  label="Latitude"
-                  required
-                  hideControls
-                  decimalScale={6}
-                  min={-90}
-                  max={90}
-                  error={errors.latitude?.message}
-                  value={field.value ?? ""}
-                  onChange={field.onChange}
-                  onBlur={() => {
-                    field.onBlur();
-                    if (typeof field.value === "number") {
-                      field.onChange(Number(field.value.toFixed(6)));
-                    }
-                  }}
-                />
-              )}
-            />
-            <Controller
-              name="longitude"
-              control={control}
-              rules={{
-                required: "Longitude is required",
-                min: {
-                  value: -180,
-                  message: "Longitude must be between -180 and 180",
-                },
-                max: {
-                  value: 180,
-                  message: "Longitude must be between -180 and 180",
-                },
-              }}
-              render={({ field }) => (
-                <NumberInput
-                  label="Longitude"
-                  required
-                  hideControls
-                  decimalScale={6}
-                  min={-180}
-                  max={180}
-                  error={errors.longitude?.message}
-                  value={field.value ?? ""}
-                  onChange={field.onChange}
-                  onBlur={() => {
-                    field.onBlur();
-                    if (typeof field.value === "number") {
-                      field.onChange(Number(field.value.toFixed(6)));
-                    }
-                  }}
-                />
-              )}
-            />
-          </SimpleGrid>
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+          <Controller
+            name="city"
+            control={control}
+            rules={{ required: "City / Municipality is required" }}
+            render={({ field }) => (
+              <Select
+                label="City / Municipality"
+                data={cityList}
+                required
+                searchable
+                error={errors.city?.message}
+                {...field}
+                value={field.value}
+                onChange={(value) => {
+                  field.onChange(value);
+                  resetOptions(3, value);
+                  if (value) handleCityChange(value);
+                }}
+                loading={loadingFieldList.includes("city")}
+                variant={cityList.length ? "default" : "filled"}
+              />
+            )}
+          />
+          <Controller
+            name="barangay"
+            control={control}
+            rules={{ required: "Barangay is required" }}
+            render={({ field }) => (
+              <Select
+                label="Barangay"
+                data={barangayList}
+                required
+                searchable
+                error={errors.barangay?.message}
+                {...field}
+                value={field.value}
+                onChange={(value) => {
+                  field.onChange(value);
+                  resetOptions(4, value);
+                  if (value) handleBarangayChange(value);
+                }}
+                loading={loadingFieldList.includes("barangay")}
+                variant={barangayList.length ? "default" : "filled"}
+              />
+            )}
+          />
+        </SimpleGrid>
 
-          <Group justify="flex-end">
-            <Button
-              variant="subtle"
-              color="gray"
-              onClick={() => setOpened(false)}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" loading={isSaving} disabled={!isDirty}>
-              {defaultValues.pickupAddressId ? "Save changes" : "Create Address"}
-            </Button>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+          <Controller
+            name="postalCode"
+            control={control}
+            rules={{ required: "Postal code is required" }}
+            render={({ field }) => (
+              <TextInput
+                label="Postal Code"
+                readOnly
+                variant="filled"
+                styles={{ input: { cursor: "not-allowed", opacity: 0.6 } }}
+                error={errors.postalCode?.message}
+                {...field}
+                value={field.value ?? ""}
+                required
+              />
+            )}
+          />
+          <Controller
+            name="isAvailable"
+            control={control}
+            render={({ field: { value, onChange, ...field } }) => (
+              <Switch
+                mt="xl"
+                label="Available for pickup"
+                checked={value}
+                onChange={(event) => onChange(event.currentTarget.checked)}
+                {...field}
+              />
+            )}
+          />
+        </SimpleGrid>
+
+        <TextInput
+          label="Street"
+          placeholder="House no., street name"
+          required
+          maxLength={TEXT_LIMITS.long}
+          error={errors.street?.message}
+          {...register("street", { required: "Street is required" })}
+        />
+
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+          <Controller
+            name="latitude"
+            control={control}
+            rules={{
+              required: "Latitude is required",
+              min: {
+                value: -90,
+                message: "Latitude must be between -90 and 90",
+              },
+              max: {
+                value: 90,
+                message: "Latitude must be between -90 and 90",
+              },
+            }}
+            render={({ field }) => (
+              <NumberInput
+                label="Latitude"
+                required
+                hideControls
+                decimalScale={6}
+                min={-90}
+                max={90}
+                error={errors.latitude?.message}
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                onBlur={() => {
+                  field.onBlur();
+                  if (typeof field.value === "number") {
+                    field.onChange(Number(field.value.toFixed(6)));
+                  }
+                }}
+              />
+            )}
+          />
+          <Controller
+            name="longitude"
+            control={control}
+            rules={{
+              required: "Longitude is required",
+              min: {
+                value: -180,
+                message: "Longitude must be between -180 and 180",
+              },
+              max: {
+                value: 180,
+                message: "Longitude must be between -180 and 180",
+              },
+            }}
+            render={({ field }) => (
+              <NumberInput
+                label="Longitude"
+                required
+                hideControls
+                decimalScale={6}
+                min={-180}
+                max={180}
+                error={errors.longitude?.message}
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                onBlur={() => {
+                  field.onBlur();
+                  if (typeof field.value === "number") {
+                    field.onChange(Number(field.value.toFixed(6)));
+                  }
+                }}
+              />
+            )}
+          />
+        </SimpleGrid>
+
+        <Group justify="flex-end">
+          <Button
+            variant="subtle"
+            color="gray"
+            onClick={() => setOpened(false)}
+            disabled={isSaving}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" loading={isSaving} disabled={!isDirty}>
+            {defaultValues.pickupAddressId ? "Save changes" : "Create Address"}
+          </Button>
+        </Group>
+      </Stack>
+    </form>
   );
 };
 

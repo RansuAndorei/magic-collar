@@ -147,6 +147,15 @@ export type OnboardingAddressType = {
   isDefault: boolean;
 };
 
+export type ProfileAddressFormValuesType = {
+  addresses: ProfileAddressFormType[];
+};
+
+export type ProfileAddressFormType = OnboardingAddressType & {
+  deliveryDetailId?: string;
+  addressId?: string;
+};
+
 export type CheckoutAddressType = DeliveryDetailTableRow & {
   delivery_detail_address: AddressTableRow;
 };

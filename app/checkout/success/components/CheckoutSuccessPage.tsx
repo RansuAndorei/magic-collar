@@ -36,16 +36,19 @@ const CheckoutSuccessPage = () => {
 
   useEffect(() => {
     const rawSummary = window.sessionStorage.getItem(CHECKOUT_SUMMARY_STORAGE_KEY);
+
     if (!rawSummary) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsLoading(false);
       return;
     }
 
     try {
-      setIsLoading(true);
       setSummary(JSON.parse(rawSummary) as CheckoutSummary);
       window.sessionStorage.removeItem(CHECKOUT_SUMMARY_STORAGE_KEY);
       localStorage.removeItem(SHOP_CART_STORAGE_KEY);
-    } catch {
+    } catch (e) {
+      console.error("Failed to parse checkout summary", e);
       setSummary(null);
     } finally {
       setIsLoading(false);

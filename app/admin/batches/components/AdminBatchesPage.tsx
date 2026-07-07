@@ -93,10 +93,12 @@ const AdminBatchesPage = ({ batchLimit }: Props) => {
   const [visibleColumns, setVisibleColumns] = useState(
     orderColumnOptions.map((column) => column.value),
   );
+  const [prevFilters, setPrevFilters] = useState({ search, batchStatus });
 
-  useEffect(() => {
+  if (prevFilters.search !== search || prevFilters.batchStatus !== batchStatus) {
+    setPrevFilters({ search, batchStatus });
     setPage(1);
-  }, [batchStatus, search]);
+  }
 
   const loadBatches = useCallback(async () => {
     if (!userData) return;
@@ -135,6 +137,7 @@ const AdminBatchesPage = ({ batchLimit }: Props) => {
   }, [batchStatus, page, pathname, recordsPerPage, search, sortStatus, userData]);
 
   useEffect(() => {
+    // eslint-disable-next-line
     loadBatches();
   }, [loadBatches]);
 

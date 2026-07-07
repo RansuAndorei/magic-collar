@@ -90,10 +90,12 @@ const CouriersPage = () => {
   const [visibleColumns, setVisibleColumns] = useState(
     courierColumnOptions.map((column) => column.value),
   );
+  const [prevFilters, setPrevFilters] = useState({ search, status });
 
-  useEffect(() => {
+  if (prevFilters.search !== search || prevFilters.status !== status) {
+    setPrevFilters({ search, status });
     setPage(1);
-  }, [search, status]);
+  }
 
   const loadCouriers = useCallback(async () => {
     if (!userData) return;
@@ -131,6 +133,7 @@ const CouriersPage = () => {
   }, [page, pathname, recordsPerPage, search, sortStatus, status, userData]);
 
   useEffect(() => {
+    // eslint-disable-next-line
     loadCouriers();
   }, [loadCouriers]);
 

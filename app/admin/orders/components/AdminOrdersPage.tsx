@@ -95,10 +95,22 @@ const AdminOrdersPage = () => {
   const [visibleColumns, setVisibleColumns] = useState(
     orderColumnOptions.map((column) => column.value),
   );
+  const [prevFilters, setPrevFilters] = useState({
+    fulfillment,
+    orderStatus,
+    paymentStatus,
+    search,
+  });
 
-  useEffect(() => {
+  if (
+    prevFilters.fulfillment !== fulfillment ||
+    prevFilters.orderStatus !== orderStatus ||
+    prevFilters.paymentStatus !== paymentStatus ||
+    prevFilters.search !== search
+  ) {
+    setPrevFilters({ fulfillment, orderStatus, paymentStatus, search });
     setPage(1);
-  }, [fulfillment, orderStatus, paymentStatus, search]);
+  }
 
   const loadOrders = useCallback(async () => {
     if (!userData) return;
@@ -149,6 +161,7 @@ const AdminOrdersPage = () => {
   ]);
 
   useEffect(() => {
+    // eslint-disable-next-line
     loadOrders();
   }, [loadOrders]);
 

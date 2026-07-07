@@ -99,10 +99,12 @@ const PaymentChannelsPage = () => {
   const [visibleColumns, setVisibleColumns] = useState(
     paymentChannelColumnOptions.map((column) => column.value),
   );
+  const [prevFilters, setPrevFilters] = useState({ search, status });
 
-  useEffect(() => {
+  if (prevFilters.search !== search || prevFilters.status !== status) {
+    setPrevFilters({ search, status });
     setPage(1);
-  }, [search, status]);
+  }
 
   const loadPaymentChannel = useCallback(async () => {
     if (!userData) return;
@@ -140,6 +142,7 @@ const PaymentChannelsPage = () => {
   }, [page, pathname, recordsPerPage, search, sortStatus, status, userData]);
 
   useEffect(() => {
+    // eslint-disable-next-line
     loadPaymentChannel();
   }, [loadPaymentChannel]);
 

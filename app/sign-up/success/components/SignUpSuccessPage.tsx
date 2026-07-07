@@ -29,14 +29,12 @@ const SignUpSuccessPage = () => {
   const [isResending, setIsResending] = useState(false);
   const [timer, setTimer] = useState(0);
 
-  // Countdown tick
   useEffect(() => {
     if (timer <= 0) return;
     const interval = setInterval(() => setTimer((prev) => prev - 1), 1000);
     return () => clearInterval(interval);
   }, [timer]);
 
-  // Redirect if no email param
   useEffect(() => {
     if (!email) router.replace("/sign-up");
   }, [email, router]);

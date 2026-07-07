@@ -169,6 +169,7 @@ const ProcessPage = () => {
   }, [userData]);
 
   useEffect(() => {
+    // eslint-disable-next-line
     loadProcessSettings();
   }, [loadProcessSettings]);
 

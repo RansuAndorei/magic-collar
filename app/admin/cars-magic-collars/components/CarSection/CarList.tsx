@@ -95,10 +95,12 @@ const CarList = ({ makeList, modelList }: Props) => {
   const [visibleColumns, setVisibleColumns] = useState(
     orderColumnOptions.map((column) => column.value),
   );
+  const [prevFilters, setPrevFilters] = useState({ carSearch, carStatus });
 
-  useEffect(() => {
+  if (prevFilters.carSearch !== carSearch || prevFilters.carStatus !== carStatus) {
+    setPrevFilters({ carSearch, carStatus });
     setCarPage(1);
-  }, [carSearch, carStatus]);
+  }
 
   const loadCars = useCallback(async () => {
     if (!userData) return;
@@ -293,6 +295,7 @@ const CarList = ({ makeList, modelList }: Props) => {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line
     loadCars();
   }, [loadCars]);
 

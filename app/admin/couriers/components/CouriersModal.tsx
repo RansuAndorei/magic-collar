@@ -9,7 +9,7 @@ import { CourierFormType } from "@/utils/types";
 import { Button, Group, Modal, Stack, Switch, Text, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { usePathname } from "next/navigation";
-import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { createCourier, updateCourier } from "../actions";
 
@@ -21,6 +21,29 @@ type Props = {
 };
 
 const CouriersModal = ({ opened, setOpened, defaultValues, refreshTable }: Props) => {
+  return (
+    <Modal
+      opened={opened}
+      onClose={() => setOpened(false)}
+      title={<Text fw={800}>{defaultValues.courierId ? "Edit Courier" : "Add Courier"}</Text>}
+      size="md"
+      centered
+      closeOnEscape={!opened}
+      closeOnClickOutside
+    >
+      <CouriersModalForm
+        key={defaultValues.courierId ?? "new"}
+        setOpened={setOpened}
+        defaultValues={defaultValues}
+        refreshTable={refreshTable}
+      />
+    </Modal>
+  );
+};
+
+type FormProps = Omit<Props, "opened">;
+
+const CouriersModalForm = ({ setOpened, defaultValues, refreshTable }: FormProps) => {
   const userData = useUserData();
   const pathname = usePathname();
   const [isSaving, setIsSaving] = useState(false);
@@ -29,13 +52,8 @@ const CouriersModal = ({ opened, setOpened, defaultValues, refreshTable }: Props
     control,
     register,
     handleSubmit,
-    reset,
     formState: { errors, isDirty },
   } = useForm<CourierFormType>({ defaultValues });
-
-  useEffect(() => {
-    if (opened) reset(defaultValues);
-  }, [defaultValues, opened, reset]);
 
   const onSubmit = async (values: CourierFormType) => {
     if (!userData) return;
@@ -88,55 +106,45 @@ const CouriersModal = ({ opened, setOpened, defaultValues, refreshTable }: Props
   };
 
   return (
-    <Modal
-      opened={opened}
-      onClose={() => setOpened(false)}
-      title={<Text fw={800}>{defaultValues.courierId ? "Edit Courier" : "Add Courier"}</Text>}
-      size="md"
-      centered
-      closeOnEscape={!isSaving}
-      closeOnClickOutside={!isSaving}
-    >
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <Stack gap="md">
-          <TextInput
-            label="Courier Name"
-            placeholder="e.g. LBC, J&T Express"
-            required
-            maxLength={TEXT_LIMITS.medium}
-            error={errors.name?.message}
-            {...register("name", { required: "Courier name is required" })}
-          />
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <Stack gap="md">
+        <TextInput
+          label="Courier Name"
+          placeholder="e.g. LBC, J&T Express"
+          required
+          maxLength={TEXT_LIMITS.medium}
+          error={errors.name?.message}
+          {...register("name", { required: "Courier name is required" })}
+        />
 
-          <Controller
-            name="isAvailable"
-            control={control}
-            render={({ field: { value, onChange, ...field } }) => (
-              <Switch
-                label="Available for selection"
-                checked={value}
-                onChange={(event) => onChange(event.currentTarget.checked)}
-                {...field}
-              />
-            )}
-          />
+        <Controller
+          name="isAvailable"
+          control={control}
+          render={({ field: { value, onChange, ...field } }) => (
+            <Switch
+              label="Available for selection"
+              checked={value}
+              onChange={(event) => onChange(event.currentTarget.checked)}
+              {...field}
+            />
+          )}
+        />
 
-          <Group justify="flex-end">
-            <Button
-              variant="subtle"
-              color="gray"
-              onClick={() => setOpened(false)}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" loading={isSaving} disabled={!isDirty}>
-              {defaultValues.courierId ? "Save changes" : "Create Courier"}
-            </Button>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
+        <Group justify="flex-end">
+          <Button
+            variant="subtle"
+            color="gray"
+            onClick={() => setOpened(false)}
+            disabled={isSaving}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" loading={isSaving} disabled={!isDirty}>
+            {defaultValues.courierId ? "Save changes" : "Create Courier"}
+          </Button>
+        </Group>
+      </Stack>
+    </form>
   );
 };
 

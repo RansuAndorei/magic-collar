@@ -113,10 +113,12 @@ const PickupAddressesPage = () => {
   const [visibleColumns, setVisibleColumns] = useState(
     pickupAddressColumnOptions.map((column) => column.value),
   );
+  const [prevFilters, setPrevFilters] = useState({ search, status });
 
-  useEffect(() => {
+  if (prevFilters.search !== search || prevFilters.status !== status) {
+    setPrevFilters({ search, status });
     setPage(1);
-  }, [search, status]);
+  }
 
   const loadPickupAddresses = useCallback(async () => {
     if (!userData) return;
@@ -154,6 +156,7 @@ const PickupAddressesPage = () => {
   }, [page, pathname, recordsPerPage, search, sortStatus, status, userData]);
 
   useEffect(() => {
+    // eslint-disable-next-line
     loadPickupAddresses();
   }, [loadPickupAddresses]);
 

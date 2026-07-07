@@ -93,10 +93,15 @@ const MagicCollarList = () => {
   const [visibleColumns, setVisibleColumns] = useState(
     orderColumnOptions.map((column) => column.value),
   );
+  const [prevFilters, setPrevFilters] = useState({ magicCollarSearch, magicCollarStatus });
 
-  useEffect(() => {
+  if (
+    prevFilters.magicCollarSearch !== magicCollarSearch ||
+    prevFilters.magicCollarStatus !== magicCollarStatus
+  ) {
+    setPrevFilters({ magicCollarSearch, magicCollarStatus });
     setMagicCollarPage(1);
-  }, [magicCollarSearch, magicCollarStatus]);
+  }
 
   const loadMagicCollars = useCallback(async () => {
     if (!userData) return;
@@ -142,6 +147,11 @@ const MagicCollarList = () => {
     userData,
   ]);
 
+  const refreshTables = useCallback(() => {
+    loadMagicCollars();
+    router.refresh();
+  }, [loadMagicCollars, router]);
+
   const handleAvailabilityChange = useCallback(
     async (magicCollar: MagicCollarTableRow) => {
       if (!userData) return;
@@ -180,7 +190,7 @@ const MagicCollarList = () => {
         setLoadingRow(null);
       }
     },
-    [userData, pathname],
+    [userData, pathname, refreshTables],
   );
 
   const confirmAvailabilityChange = useCallback(
@@ -259,7 +269,7 @@ const MagicCollarList = () => {
         setLoadingRow(null);
       }
     },
-    [userData, pathname],
+    [userData, pathname, refreshTables],
   );
 
   const confirmDelete = useCallback(
@@ -281,11 +291,6 @@ const MagicCollarList = () => {
     },
     [handleDelete],
   );
-
-  const refreshTables = useCallback(() => {
-    loadMagicCollars();
-    router.refresh();
-  }, [loadMagicCollars, router]);
 
   const openCreateModal = useCallback(() => {
     setValues(emptyFormValues);
@@ -309,6 +314,7 @@ const MagicCollarList = () => {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line
     loadMagicCollars();
   }, [loadMagicCollars]);
 
