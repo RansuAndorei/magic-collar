@@ -189,11 +189,11 @@ export const FOOTER_LINKS = {
   Support: [
     {
       label: "FAQs",
-      link: "faq",
+      link: "/faq",
     },
     {
       label: "Track Order",
-      link: "track-order",
+      link: "/user/orders",
     },
     {
       label: "Contact Us",
@@ -203,15 +203,15 @@ export const FOOTER_LINKS = {
   Policies: [
     {
       label: "Shipping Policy",
-      link: "shipping-policy",
+      link: "/shipping-policy",
     },
     {
       label: "Privacy Policy",
-      link: "privacy-policy",
+      link: "/privacy-policy",
     },
     {
       label: "Terms of Service",
-      link: "terms-of-service",
+      link: "/terms-of-service",
     },
   ],
 };

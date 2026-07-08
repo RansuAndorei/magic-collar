@@ -5,7 +5,6 @@ import { generateAvatarColor, isAppError } from "@/utils/functions";
 import { supabaseClient } from "@/utils/supabase/client";
 import {
   Avatar,
-  Box,
   Button,
   Group,
   Menu,
@@ -16,7 +15,13 @@ import {
   useMantineTheme,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconChevronDown, IconLogout, IconReceipt, IconUser } from "@tabler/icons-react";
+import {
+  IconChevronDown,
+  IconLayoutDashboard,
+  IconLogout,
+  IconReceipt,
+  IconUser,
+} from "@tabler/icons-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -31,6 +36,7 @@ const ProfileDropdown = () => {
   const computedColorScheme = useComputedColorScheme();
 
   const isDark = computedColorScheme === "dark";
+  const isAdmin = userProfile?.user_role === "ADMIN";
 
   const handleLogout = async () => {
     if (!userData) return;
@@ -65,7 +71,7 @@ const ProfileDropdown = () => {
         Logout
       </Button>
     );
-  } else if (userProfile && !pathname.includes("admin")) {
+  } else if (userProfile) {
     return (
       <Menu shadow="md" width={200}>
         <Menu.Target>
@@ -122,59 +128,18 @@ const ProfileDropdown = () => {
           <Menu.Item leftSection={<IconReceipt size={14} />} component={Link} href="/user/orders">
             Orders
           </Menu.Item>
+          {isAdmin ? (
+            <Menu.Item
+              leftSection={<IconLayoutDashboard size={14} />}
+              component={Link}
+              href="/admin/analytics"
+            >
+              Admin Dashboard
+            </Menu.Item>
+          ) : null}
 
           <Menu.Divider />
 
-          <Menu.Item color="red" leftSection={<IconLogout size={14} />} onClick={handleLogout}>
-            Logout
-          </Menu.Item>
-        </Menu.Dropdown>
-      </Menu>
-    );
-  } else if (pathname.includes("admin") && userProfile) {
-    return (
-      <Menu shadow="md" width={200}>
-        <Menu.Target>
-          <UnstyledButton
-            style={{
-              padding: "6px 8px",
-              borderRadius: "4px",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = isDark
-                ? theme.colors.dark[6]
-                : theme.colors.gray[1];
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "transparent";
-            }}
-          >
-            <Group gap="sm">
-              <Avatar
-                radius="xl"
-                src={userProfile?.user_avatar}
-                color="white"
-                style={{
-                  backgroundColor: generateAvatarColor(userProfile?.user_id),
-                }}
-              >
-                {userProfile?.user_first_name[0].toUpperCase()}
-                {userProfile?.user_last_name[0].toUpperCase()}
-              </Avatar>
-              <Box visibleFrom="md">
-                <Text size="sm" fw={500}>
-                  {userProfile?.user_first_name} {userProfile?.user_last_name}
-                </Text>
-                <Text size="xs" c="dimmed">
-                  {userProfile?.user_email}
-                </Text>
-              </Box>
-              <IconChevronDown size={14} />
-            </Group>
-          </UnstyledButton>
-        </Menu.Target>
-
-        <Menu.Dropdown>
           <Menu.Item color="red" leftSection={<IconLogout size={14} />} onClick={handleLogout}>
             Logout
           </Menu.Item>

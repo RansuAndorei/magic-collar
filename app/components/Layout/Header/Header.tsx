@@ -142,12 +142,7 @@ const Header = () => {
               </Button>
             ) : null}
 
-            {!isOnboarding && isAdmin && !isAdminPath ? (
-              <Button component={Link} href="/admin/analytics">
-                Admin Dashboard
-              </Button>
-            ) : null}
-            {!isOnboarding && !isAdmin && !isShopRoute && !isAdminPath ? (
+            {!isOnboarding && !isShopRoute ? (
               <Button component={Link} href="/shop">
                 Shop Now
               </Button>

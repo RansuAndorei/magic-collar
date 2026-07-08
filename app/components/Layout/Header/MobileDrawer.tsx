@@ -3,7 +3,14 @@
 import { useUserProfile } from "@/stores/useUserStore";
 import { LOGO_PATH, NAV_LINKS } from "@/utils/constants";
 import { Box, Button, Container, Divider, Drawer, Flex, Group, Stack, Text } from "@mantine/core";
-import { IconArrowRight, IconLogout, IconReceipt, IconUser, IconX } from "@tabler/icons-react";
+import {
+  IconArrowRight,
+  IconLayoutDashboard,
+  IconLogout,
+  IconReceipt,
+  IconUser,
+  IconX,
+} from "@tabler/icons-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -135,7 +142,7 @@ const MobileDrawer = ({ opened, onClose, isOnboarding, isAdmin, handleLogout }: 
                 </>
               ) : null}
 
-              {!isOnboarding && !isAdmin && !isAdminPath ? (
+              {!isOnboarding ? (
                 <Group justify="center" grow>
                   <Button component={Link} href="/shop">
                     Shop Now
@@ -166,43 +173,36 @@ const MobileDrawer = ({ opened, onClose, isOnboarding, isAdmin, handleLogout }: 
                       }
                     />
 
-                    {!isAdminPath ? (
-                      <>
-                        <Button
-                          leftSection={<IconUser size={14} />}
-                          variant="light"
-                          component={Link}
-                          href="/user/profile"
-                          color="gray"
-                        >
-                          Profile
-                        </Button>
-                        <Button
-                          leftSection={<IconReceipt size={14} />}
-                          component={Link}
-                          href="/user/orders"
-                          variant="light"
-                          color="gray"
-                        >
-                          Orders
-                        </Button>
-                      </>
-                    ) : null}
-
-                    {!isAdminPath ? (
+                    <Button
+                      leftSection={<IconUser size={14} />}
+                      variant="light"
+                      component={Link}
+                      href="/user/profile"
+                      color="gray"
+                    >
+                      Profile
+                    </Button>
+                    <Button
+                      leftSection={<IconReceipt size={14} />}
+                      component={Link}
+                      href="/user/orders"
+                      variant="light"
+                      color="gray"
+                    >
+                      Orders
+                    </Button>
+                    {isAdmin ? (
                       <Button
-                        color="red"
-                        leftSection={<IconLogout size={14} />}
-                        onClick={handleLogout}
+                        leftSection={<IconLayoutDashboard size={14} />}
+                        component={Link}
+                        href="/admin/analytics"
+                        variant="light"
+                        color="gray"
                       >
-                        Logout
+                        Admin Dashboard
                       </Button>
                     ) : null}
-                  </Stack>
-                ) : null}
 
-                {isOnboarding ? (
-                  <Stack px="md" gap="xs">
                     <Button
                       color="red"
                       leftSection={<IconLogout size={14} />}
@@ -213,7 +213,7 @@ const MobileDrawer = ({ opened, onClose, isOnboarding, isAdmin, handleLogout }: 
                   </Stack>
                 ) : null}
 
-                {pathname.includes("admin") ? (
+                {isOnboarding ? (
                   <Stack px="md" gap="xs">
                     <Button
                       color="red"
