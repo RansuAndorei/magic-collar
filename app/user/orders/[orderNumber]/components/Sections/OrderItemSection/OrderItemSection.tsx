@@ -10,6 +10,7 @@ import {
 } from "@/utils/functions";
 import { BatchStatusEnum, OrderItemStatusEnum, OrderWithOrderItemType } from "@/utils/types";
 import {
+  Alert,
   Badge,
   Box,
   Button,
@@ -22,6 +23,7 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import {
+  IconAlertTriangle,
   IconBox,
   IconChevronDown,
   IconCircleCheck,
@@ -65,6 +67,7 @@ const OrderItemSection = ({ order }: Props) => {
 
   const isAdmin = pathname.startsWith("/admin");
   const isDeliveryOrder = order.order_fulfillment === "DELIVERY";
+  const isFullyPaid = order.order_payment_status === "PAID";
 
   const isEligibleForFulfillment = (item: OrderItem) => {
     const isInStock = item.order_item_status === "IN STOCK";
@@ -336,50 +339,66 @@ const OrderItemSection = ({ order }: Props) => {
         )}
 
         {isAdmin && selectedItemIds.size > 0 && (
-          <Group
-            justify="space-between"
-            align="center"
-            p="sm"
-            style={{
-              position: "sticky",
-              bottom: rem(8),
-              borderRadius: rem(8),
-              background: "var(--mantine-color-body)",
-              border: "1px solid var(--mantine-color-default-border)",
-              boxShadow: "var(--mantine-shadow-md)",
-            }}
-          >
-            <Text size="sm" fw={600}>
-              {selectedItemIds.size} item{selectedItemIds.size > 1 ? "s" : ""} selected
-            </Text>
+          <Stack>
+            <Group
+              justify="space-between"
+              align="center"
+              p="sm"
+              style={{
+                position: "sticky",
+                bottom: rem(8),
+                borderRadius: rem(8),
+                background: "var(--mantine-color-body)",
+                border: "1px solid var(--mantine-color-default-border)",
+                boxShadow: "var(--mantine-shadow-md)",
+              }}
+            >
+              <Text size="sm" fw={600}>
+                {selectedItemIds.size} item{selectedItemIds.size > 1 ? "s" : ""} selected
+              </Text>
 
-            {activeAction === "DELIVER" ? (
-              <Button
-                size="sm"
-                color="teal"
-                leftSection={<IconCircleCheck size={16} />}
-                onClick={() => setDeliveredModalOpened(true)}
+              {activeAction === "DELIVER" ? (
+                <Button
+                  size="sm"
+                  color="teal"
+                  leftSection={<IconCircleCheck size={16} />}
+                  onClick={() => setDeliveredModalOpened(true)}
+                  disabled={!isFullyPaid}
+                >
+                  Mark as Delivered
+                </Button>
+              ) : isDeliveryOrder ? (
+                <Button
+                  size="sm"
+                  leftSection={<IconTruckDelivery size={16} />}
+                  onClick={() => setProofModalOpened(true)}
+                  disabled={!isFullyPaid}
+                >
+                  Mark Out for Delivery
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  leftSection={<IconPackage size={16} />}
+                  onClick={() => setPickupModalOpened(true)}
+                  disabled={!isFullyPaid}
+                >
+                  Mark Ready for Pickup
+                </Button>
+              )}
+            </Group>
+            {!isFullyPaid && (
+              <Alert
+                color="yellow"
+                variant="light"
+                icon={<IconAlertTriangle size={18} />}
+                radius="md"
               >
-                Mark as Delivered
-              </Button>
-            ) : isDeliveryOrder ? (
-              <Button
-                size="sm"
-                leftSection={<IconTruckDelivery size={16} />}
-                onClick={() => setProofModalOpened(true)}
-              >
-                Mark Out for Delivery
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                leftSection={<IconPackage size={16} />}
-                onClick={() => setPickupModalOpened(true)}
-              >
-                Mark Ready for Pickup
-              </Button>
+                This order has not been fully paid yet. The customer must complete the payment
+                before the order can be released.
+              </Alert>
             )}
-          </Group>
+          </Stack>
         )}
 
         <DeliveryProofUploadModal
