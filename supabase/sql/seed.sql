@@ -14,18 +14,20 @@ INSERT INTO address_table (address_id, address_region, address_province, address
 ('d008fb70-6d22-4c93-aa3e-ceef4fd7e5a7', 'National Capital Region (NCR)', 'NCR, Second District', 'Quezon City', 'U.P. Village', '63 Maginhawa', '1101'),
 ('aed7b8eb-4058-4258-b6dc-872c337f8b6b', 'Region III - Central Luzon', 'Bulacan', 'Obando', 'Paliwas', 'J.P. Rizal', '3021'),
 ('817646bc-5303-495c-b801-a58e2f81c747', 'Region VIII - Eastern Visayas', 'Samar (Western Samar)', 'Pagsanghan', 'Bangon', 'Biringan', '6705'),
-('3c2106bd-d40a-4333-b734-46d7a40f5086', 'National Capital Region (NCR)', 'NCR, City of Manila, First District', 'Ermita', 'Barangay 659', 'San Marcelino', '1000');
+('3c2106bd-d40a-4333-b734-46d7a40f5086', 'National Capital Region (NCR)', 'NCR, City of Manila, First District', 'Ermita', 'Barangay 659', 'San Marcelino', '1000'),
+('c09753cd-fa16-41c1-a8c7-0a0e35c89e33', 'Region III - Central Luzon', 'Bulacan', 'Obando', 'Paliwas', 'J.P. Rizal', '3021');
 
 INSERT INTO delivery_detail_table (delivery_detail_id, delivery_detail_full_name, delivery_detail_phone_number, delivery_detail_address_id, delivery_detail_user_id, delivery_detail_is_default) VALUES
 ('8045101a-c52d-440b-bf89-4458d822874d', 'Lance Andrei Rivera Juat', '9358171232', 'aed7b8eb-4058-4258-b6dc-872c337f8b6b', '10f105ed-b0fb-4031-951b-2e0ec6956c15', true),
-('a3081bb5-3303-4b57-be44-4544045c5720', 'Puto', '9548979456', '3c2106bd-d40a-4333-b734-46d7a40f5086', '10f105ed-b0fb-4031-951b-2e0ec6956c15', false);
+('a3081bb5-3303-4b57-be44-4544045c5720', 'Puto', '9548979456', '3c2106bd-d40a-4333-b734-46d7a40f5086', '10f105ed-b0fb-4031-951b-2e0ec6956c15', false),
+('68dd1614-c960-4912-b3e2-05b687320f30', 'Magic Collar Admin', '9358171232', 'c09753cd-fa16-41c1-a8c7-0a0e35c89e33', '8b9f19a9-c39a-4138-929e-1402f76701fa', true);
 
 INSERT INTO pickup_address_table (pickup_address_latitude, pickup_address_longitude, pickup_address_address_id, pickup_address_created_by_admin_user_id, pickup_address_is_available) VALUES
 (14.64807896736001, 121.05740116065856, 'd008fb70-6d22-4c93-aa3e-ceef4fd7e5a7', '8b9f19a9-c39a-4138-929e-1402f76701fa', true),
 (11.969570249971897, 124.76092996295085, '817646bc-5303-495c-b801-a58e2f81c747', '8b9f19a9-c39a-4138-929e-1402f76701fa', false);
 
 INSERT INTO system_setting_table (system_setting_key, system_setting_value) VALUES
-('BATCH_LIMIT', 32),
+('BATCH_LIMIT', 10),
 ('ORDER_EXPIRATION_IN_DAYS', 30),
 ('EMAIL', 'magiccollar@gmail.com'),
 ('PHONE_NUMBER', '9123456789'),
@@ -34,8 +36,8 @@ INSERT INTO system_setting_table (system_setting_key, system_setting_value) VALU
 ('TIKTOK', 'https://www.tiktok.com/discover/magic-collar-car'),
 ('YOUTUBE', 'https://www.youtube.com/results?search_query=magic+collar');
 
-INSERT INTO batch_table (batch_id) VALUES
-('120c2e73-3905-4189-b1e1-358f15b6c50b');
+INSERT INTO batch_table (batch_id, batch_limit) VALUES
+('120c2e73-3905-4189-b1e1-358f15b6c50b', 10);
 
 INSERT INTO batch_status_log_table (batch_status_log_new_status, batch_status_log_batch_id) VALUES
 ('PENDING', '120c2e73-3905-4189-b1e1-358f15b6c50b');

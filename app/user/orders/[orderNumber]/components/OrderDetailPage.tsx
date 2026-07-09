@@ -4,7 +4,7 @@ import { OrderWithOrderItemType, PaymentChannelType } from "@/utils/types";
 import { Box, Container, rem, Stack } from "@mantine/core";
 import FulfillmentSection from "./Sections/FulfillmentSection";
 import HeaderSection from "./Sections/HeaderSection";
-import OrderItemSection from "./Sections/OrderItemSection";
+import OrderItemSection from "./Sections/OrderItemSection/OrderItemSection";
 import PaymentBreakdownSection from "./Sections/PaymentBreakdownSection/PaymentBreakdownSection";
 import StatusSection from "./Sections/StatusSection";
 

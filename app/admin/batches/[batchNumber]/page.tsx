@@ -1,8 +1,8 @@
 import { insertError } from "@/app/actions";
 import { isAppError } from "@/utils/functions";
 import { createSupabaseServerClient } from "@/utils/supabase/server";
+import { AdminBatchDetail } from "@/utils/types";
 import { redirect } from "next/navigation";
-import { getBatchLimit } from "../actions";
 import { getAdminBatchDetail } from "./actions";
 import AdminBatchDetailPage from "./components/AdminBatchDetailPage";
 
@@ -21,16 +21,11 @@ const Page = async ({ params }: Props) => {
   } = await supabaseClient.auth.getUser();
   if (!user) redirect("/sign-in");
 
-  let batch;
-  let batchLimit;
-
+  let batch: AdminBatchDetail;
   try {
-    [batch, batchLimit] = await Promise.all([
-      getAdminBatchDetail(supabaseClient, {
-        batchNumber: Number(batchNumber),
-      }),
-      getBatchLimit(supabaseClient),
-    ]);
+    batch = await getAdminBatchDetail(supabaseClient, {
+      batchNumber: Number(batchNumber),
+    });
   } catch (e) {
     if (isAppError(e)) {
       await insertError(supabaseClient, {
@@ -49,7 +44,7 @@ const Page = async ({ params }: Props) => {
     redirect("/error/404");
   }
 
-  return <AdminBatchDetailPage batch={batch} batchLimit={batchLimit} />;
+  return <AdminBatchDetailPage batch={batch} />;
 };
 
 export default Page;

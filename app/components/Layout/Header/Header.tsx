@@ -16,6 +16,7 @@ import { memo, useEffect } from "react";
 import AdminNavigationDrawer from "./AdminNavigationDrawer";
 import ColorModeToggle from "./ColorModeToggle";
 import MobileDrawer from "./MobileDrawer";
+import NotificationBell from "./NotificationBell";
 import ProfileDropdown from "./ProfileDropdown";
 
 const Header = () => {
@@ -111,6 +112,7 @@ const Header = () => {
                 </Stack>
               </Group>
             </Link>
+            <ColorModeToggle />
           </Group>
 
           {/* Desktop nav */}
@@ -135,7 +137,6 @@ const Header = () => {
 
           {/* Desktop actions */}
           <Group gap="sm" visibleFrom="md">
-            <ColorModeToggle />
             {!isOnboarding && !userProfile ? (
               <Button variant="subtle" color="gray" size="sm" component={Link} href="/sign-in">
                 Sign In
@@ -148,12 +149,14 @@ const Header = () => {
               </Button>
             ) : null}
 
+            {!isOnboarding && userData ? <NotificationBell /> : null}
+
             <ProfileDropdown />
           </Group>
 
           {/* Mobile: color toggle + burger */}
           <Group gap="xs" hiddenFrom="md">
-            <ColorModeToggle />
+            {!isOnboarding && userData ? <NotificationBell /> : null}
             <Burger opened={opened} onClick={open} size={16} />
           </Group>
         </Flex>

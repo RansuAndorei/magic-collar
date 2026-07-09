@@ -139,6 +139,7 @@ const ProfileAddressSection = ({ regionList }: Props) => {
   }, [hydrateAddress, reset, userData]);
 
   useEffect(() => {
+    // eslint-disable-next-line
     fetchAddressList();
   }, [fetchAddressList]);
 

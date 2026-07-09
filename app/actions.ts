@@ -4,6 +4,7 @@ import {
   AttachmentBucketType,
   CarShopType,
   ErrorTableInsert,
+  NotificationTableRow,
   SettingsEnum,
   UserTableInsert,
 } from "@/utils/types";
@@ -128,4 +129,50 @@ export const fetchSocials = async (
     },
     {} as Record<SettingsEnum, string | null>,
   );
+};
+
+export const fetchHeaderNotifications = async (
+  supabaseClient: SupabaseClient<Database>,
+  params: {
+    userId: string;
+    limit: number;
+  },
+) => {
+  const { data, error } = await supabaseClient.rpc("fetch_header_notifications", {
+    input_data: params,
+  });
+  if (error) throw error;
+  return data as {
+    data: NotificationTableRow[];
+    count: number;
+  };
+};
+
+export const readSingleNotification = async (
+  supabaseClient: SupabaseClient<Database>,
+  params: {
+    notificationId: string;
+  },
+) => {
+  const { notificationId } = params;
+  const { error } = await supabaseClient
+    .from("notification_table")
+    .update({ notification_is_read: true })
+    .eq("notification_id", notificationId);
+  if (error) throw error;
+};
+
+export const readAllUnreadNotifications = async (
+  supabaseClient: SupabaseClient<Database>,
+  params: {
+    userId: string;
+  },
+) => {
+  const { userId } = params;
+  const { error } = await supabaseClient
+    .from("notification_table")
+    .update({ notification_is_read: true })
+    .eq("notification_user_id", userId)
+    .eq("notification_is_read", false);
+  if (error) throw error;
 };

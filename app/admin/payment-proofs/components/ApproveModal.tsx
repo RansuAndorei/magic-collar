@@ -113,6 +113,7 @@ const ApproveModal = ({ opened, onClose, selectedProof, onApprove }: Props) => {
                     variant="subtle"
                     color="gray"
                     size="sm"
+                    target="_blank"
                   >
                     <IconExternalLink size={16} />
                   </ActionIcon>

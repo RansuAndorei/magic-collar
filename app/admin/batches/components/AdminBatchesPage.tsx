@@ -68,11 +68,7 @@ const orderColumnOptions: TableColumnVisibilityOption[] = [
   { value: "action", label: "Action" },
 ];
 
-type Props = {
-  batchLimit: number;
-};
-
-const AdminBatchesPage = ({ batchLimit }: Props) => {
+const AdminBatchesPage = () => {
   const userData = useUserData();
   const pathname = usePathname();
   const router = useRouter();
@@ -267,10 +263,10 @@ const AdminBatchesPage = ({ batchLimit }: Props) => {
         accessor: "quantity",
         title: "Quantity",
         textAlign: "center",
-        render: ({ batch_order_quantity, batch_status }) => (
+        render: ({ batch_order_quantity, batch_status, batch_limit }) => (
           <Text>
             {batch_status === "PENDING"
-              ? `${batch_order_quantity} / ${batchLimit}`
+              ? `${batch_order_quantity ?? 0} / ${batch_limit}`
               : batch_order_quantity}
           </Text>
         ),
@@ -279,11 +275,11 @@ const AdminBatchesPage = ({ batchLimit }: Props) => {
         accessor: "progress",
         title: "Progress",
         textAlign: "center",
-        render: ({ batch_order_quantity, batch_date_created, batch_status }) => (
+        render: ({ batch_order_quantity, batch_date_created, batch_status, batch_limit }) => (
           <>
             {batch_status === "PENDING" ? (
               <Stack gap={2}>
-                <Progress value={(batch_order_quantity / batchLimit) * 100} striped animated />
+                <Progress value={(batch_order_quantity / batch_limit) * 100} striped animated />
                 <Text size="xs" c="dimmed">
                   {dayjs(batch_date_created).fromNow()}
                 </Text>
@@ -396,6 +392,7 @@ const AdminBatchesPage = ({ batchLimit }: Props) => {
             label="Batch Status"
             allowDeselect={false}
             onChange={(value) => setBatchStatus((value as BatchStatusEnum | "ALL") ?? "ALL")}
+            searchable
           />
           <TableColumnVisibility
             columns={orderColumnOptions}

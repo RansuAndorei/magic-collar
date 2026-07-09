@@ -1,6 +1,7 @@
 import { SHOP_SORT_OPTIONS, YEAR_OPTIONS } from "@/utils/constants";
 import { OptionType, ShopFiltersType } from "@/utils/types";
 import { Badge, Button, Divider, Drawer, Group, Select, Stack, Text } from "@mantine/core";
+import { memo } from "react";
 
 type Props = {
   opened: boolean;
@@ -111,4 +112,4 @@ const MobileFilterDrawer = ({
   );
 };
 
-export default MobileFilterDrawer;
+export default memo(MobileFilterDrawer);

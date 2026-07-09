@@ -99,8 +99,18 @@ export type CourierTableRow = Database["public"]["Tables"]["courier_table"]["Row
 export type CourierTableInsert = Database["public"]["Tables"]["courier_table"]["Insert"];
 export type CourierTableUpdate = Database["public"]["Tables"]["courier_table"]["Update"];
 
+export type NotificationTableRow = Database["public"]["Tables"]["notification_table"]["Row"];
+export type NotificationTableInsert = Database["public"]["Tables"]["notification_table"]["Insert"];
+export type NotificationTableUpdate = Database["public"]["Tables"]["notification_table"]["Update"];
+
+export type DeliveryProofTableRow = Database["public"]["Tables"]["delivery_proof_table"]["Row"];
+export type DeliveryProofTableInsert =
+  Database["public"]["Tables"]["delivery_proof_table"]["Insert"];
+export type DeliveryProofTableUpdate =
+  Database["public"]["Tables"]["delivery_proof_table"]["Update"];
+
 export type AttachmentBucketType =
-  "CARS" | "USER_AVATARS" | "PAYMENT_PROOFS" | "PAYMENT_CHANNEL_QR";
+  "CARS" | "USER_AVATARS" | "PAYMENT_PROOFS" | "PAYMENT_CHANNEL_QR" | "PROOF_OF_DELIVERY";
 
 export type PaymentDescriptionEnum = Database["public"]["Enums"]["payment_description"];
 export type OrderFulfillmentEnum = Database["public"]["Enums"]["order_fulfillment"];
@@ -224,6 +234,11 @@ export type OrderWithOrderItemType = OrderTableRow & {
   order_item: (OrderItemTableRow & {
     order_item_car_image_attachment: AttachmentTableRow;
     order_item_batch: BatchTableRow | null;
+    order_item_delivery_proof:
+      | (DeliveryProofTableRow & {
+          delivery_proof_attachment: AttachmentTableRow;
+        })
+      | null;
   })[];
 };
 
@@ -282,6 +297,82 @@ export type AdminBatchOrderItem = OrderItemTableRow & {
 
 export type AdminBatchDetail = AdminBatch & {
   batch_order_item: AdminBatchOrderItem[];
+};
+
+export type AdminAnalyticsDashboard = {
+  generatedAt: string;
+  summary: {
+    pendingProofs: number;
+    todayOrders: number;
+    monthOrders: number;
+    orderedValueMonth: number;
+    collectedValueMonth: number;
+    outstandingValue: number;
+    activeBatches: number;
+    lowStockCount: number;
+  };
+  salesTrend: {
+    month: string;
+    orderedValue: number;
+    collectedValue: number;
+    orderCount: number;
+  }[];
+  orderStatus: {
+    status: OrderStatusEnum;
+    count: number;
+  }[];
+  paymentStatus: {
+    status: OrderPaymentStatusEnum;
+    count: number;
+  }[];
+  fulfillment: {
+    fulfillment: OrderFulfillmentEnum;
+    count: number;
+  }[];
+  batchStatus: {
+    status: BatchStatusEnum;
+    count: number;
+  }[];
+  activeBatches: {
+    batchId: string;
+    batchNumber: number;
+    status: BatchStatusEnum;
+    quantity: number;
+    value: number;
+    fillPercent: number;
+    ageDays: number;
+  }[];
+  topCollars: {
+    carId: string;
+    vehicle: string;
+    collarReferenceNumber: number | null;
+    quantity: number;
+    revenue: number;
+    stock: number;
+  }[];
+  lowStockCollars: {
+    carId: string;
+    vehicle: string;
+    collarReferenceNumber: number | null;
+    stock: number;
+    demand30Days: number;
+  }[];
+  paymentProofs: {
+    status: OrderPaymentRequestStatusEnum;
+    count: number;
+    amount: number;
+  }[];
+  geography: {
+    city: string;
+    province: string;
+    orderCount: number;
+  }[];
+  actionItems: {
+    label: string;
+    value: number;
+    href: string;
+    tone: "red" | "orange" | "yellow" | "blue" | "green" | "gray";
+  }[];
 };
 
 export type CarFormType = {

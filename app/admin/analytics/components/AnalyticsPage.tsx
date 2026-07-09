@@ -1,19 +1,37 @@
 "use client";
 
+import { insertError } from "@/app/actions";
+import StatusBadge from "@/app/user/orders/components/StatusBadge";
+import { useUserData } from "@/stores/useUserStore";
+import {
+  formatCurrency,
+  formatStatusLabel,
+  getBatchStatusColor,
+  getBatchStatusDescription,
+  getOrderStatusColor,
+  getOrderStatusDescription,
+  getPaymentStatusColor,
+  getPaymentStatusDescription,
+  isAppError,
+} from "@/utils/functions";
+import { supabaseClient } from "@/utils/supabase/client";
+import { AdminAnalyticsDashboard } from "@/utils/types";
 import {
   ActionIcon,
   Badge,
   Box,
   Button,
   Card,
+  Center,
+  Grid,
   Group,
   Paper,
   Progress,
-  ScrollArea,
+  RingProgress,
   SimpleGrid,
+  Skeleton,
   Stack,
   Table,
-  Tabs,
   Text,
   ThemeIcon,
   Title,
@@ -22,78 +40,178 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconBuildingStore,
-  IconCar,
-  IconCheck,
-  IconClipboardCheck,
-  IconClock,
+  IconAlertTriangle,
+  IconArrowRight,
+  IconChartBar,
+  IconClipboardList,
   IconCreditCard,
-  IconDatabase,
+  IconMapPin,
+  IconPackage,
   IconPhotoScan,
-  IconPlus,
-  IconX,
+  IconRefresh,
+  IconShoppingBag,
+  IconTrendingUp,
 } from "@tabler/icons-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { getAdminAnalyticsDashboard } from "../actions";
 
-const summaryCards = [
-  { label: "Pending Proofs", value: "6", detail: "Needs payment review", icon: IconPhotoScan },
-  { label: "Monthly Sales", value: "₱428K", detail: "+18% from last month", icon: IconCreditCard },
-  { label: "Top Collar", value: "Civic FC", detail: "184 orders this quarter", icon: IconCar },
-  { label: "Avg Batch Fill", value: "4.8d", detail: "1.2d faster than target", icon: IconClock },
-];
-
-const mostOrderedRows = [
-  ["Honda Civic FC", "MC-HON-CIV-FC", "184", "31%"],
-  ["Toyota Vios XP150", "MC-TOY-VIO-150", "141", "24%"],
-  ["Mitsubishi Montero", "MC-MIT-MON-19", "88", "15%"],
-  ["Ford Everest", "MC-FOR-EVE-22", "63", "11%"],
-];
-
-const salesRows = [
-  ["January", "₱318,400", 64],
-  ["February", "₱346,900", 69],
-  ["March", "₱392,200", 78],
-  ["April", "₱371,500", 74],
-  ["May", "₱428,000", 85],
-  ["June", "₱286,700", 57],
-] as const;
-
-const batchRows = [
-  ["Batch MC-0618-A", "72 collars", "3.2 days", 82],
-  ["Batch MC-0615-B", "64 collars", "4.7 days", 69],
-  ["Batch MC-0611-C", "90 collars", "6.1 days", 54],
-] as const;
-
-const proofRows = [
-  ["MC-2026-0618-0042", "Ana Reyes", "GCash", "₱4,850", "Uploaded 18 min ago"],
-  ["MC-2026-0618-0039", "Carlo Santos", "Maya", "₱7,200", "Uploaded 42 min ago"],
-  ["MC-2026-0617-0127", "Mika Tan", "Bank transfer", "₱3,950", "Uploaded 2 hr ago"],
-];
-
-const workflowCards = [
-  {
-    label: "Catalog CRUD",
-    description: "Cars, Magic Collars, makes, models, and stock quantities.",
-    icon: IconDatabase,
+const emptyDashboard: AdminAnalyticsDashboard = {
+  generatedAt: new Date().toISOString(),
+  summary: {
+    pendingProofs: 0,
+    todayOrders: 0,
+    monthOrders: 0,
+    orderedValueMonth: 0,
+    collectedValueMonth: 0,
+    outstandingValue: 0,
+    activeBatches: 0,
+    lowStockCount: 0,
   },
-  {
-    label: "Order Workflow",
-    description: "Order item statuses, delivery setup, couriers, and pickup.",
-    icon: IconClipboardCheck,
-  },
-  {
-    label: "Business Details",
-    description: "Pickup addresses, email, phone, and Messenger channels.",
-    icon: IconBuildingStore,
-  },
-];
+  salesTrend: [],
+  orderStatus: [],
+  paymentStatus: [],
+  fulfillment: [],
+  batchStatus: [],
+  activeBatches: [],
+  topCollars: [],
+  lowStockCollars: [],
+  paymentProofs: [],
+  geography: [],
+  actionItems: [],
+};
+
+const numberFormatter = new Intl.NumberFormat("en-PH");
+
+const percent = (value: number, total: number) => {
+  if (!total) return 0;
+  return Math.round((value / total) * 100);
+};
+
+const SummaryCard = ({
+  label,
+  value,
+  detail,
+  icon: Icon,
+  color = "red",
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  icon: typeof IconChartBar;
+  color?: string;
+}) => (
+  <Card withBorder p="md">
+    <Group justify="space-between" align="flex-start" wrap="nowrap">
+      <Stack gap={4} miw={0}>
+        <Text size="sm" c="dimmed" fw={700}>
+          {label}
+        </Text>
+        <Title order={3} style={{ lineHeight: 1.1 }}>
+          {value}
+        </Title>
+        <Text size="xs" c="dimmed">
+          {detail}
+        </Text>
+      </Stack>
+      <ThemeIcon color={color} variant="light" size={42} radius="md">
+        <Icon size={22} />
+      </ThemeIcon>
+    </Group>
+  </Card>
+);
+
+const LoadingState = () => (
+  <Stack gap="xl">
+    <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="md">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <Skeleton key={index} h={124} radius="md" />
+      ))}
+    </SimpleGrid>
+    <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
+      <Skeleton h={340} radius="md" />
+      <Skeleton h={340} radius="md" />
+    </SimpleGrid>
+  </Stack>
+);
 
 const AnalyticsPage = () => {
-  const handleProofDecision = (decision: "approved" | "rejected", orderNumber: string) => {
-    notifications.show({
-      message: `Payment proof for ${orderNumber} marked as ${decision}.`,
-      color: decision === "approved" ? "green" : "red",
-    });
-  };
+  const userData = useUserData();
+  const pathname = usePathname();
+
+  const [dashboard, setDashboard] = useState<AdminAnalyticsDashboard>(emptyDashboard);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadDashboard = useCallback(
+    async (mode: "initial" | "refresh" = "initial") => {
+      if (!userData) return;
+
+      if (mode === "initial") setLoading(true);
+      if (mode === "refresh") setRefreshing(true);
+
+      try {
+        const result = await getAdminAnalyticsDashboard(supabaseClient, {
+          months: 6,
+          topLimit: 5,
+          lowStockThreshold: 5,
+        });
+        setDashboard(result);
+      } catch (e) {
+        notifications.show({
+          message: "Something went wrong while loading analytics.",
+          color: "red",
+        });
+        if (isAppError(e)) {
+          await insertError(supabaseClient, {
+            errorTableInsert: {
+              error_message: e.message,
+              error_url: pathname,
+              error_function: "loadAdminAnalyticsDashboard",
+              error_user_email: userData.email,
+              error_user_id: userData.id,
+            },
+          });
+        }
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [pathname, userData],
+  );
+
+  useEffect(() => {
+    // eslint-disable-next-line
+    loadDashboard();
+  }, [loadDashboard]);
+
+  const orderStatusTotal = useMemo(
+    () => dashboard.orderStatus.reduce((total, item) => total + item.count, 0),
+    [dashboard.orderStatus],
+  );
+
+  const paymentStatusTotal = useMemo(
+    () => dashboard.paymentStatus.reduce((total, item) => total + item.count, 0),
+    [dashboard.paymentStatus],
+  );
+
+  const maxSalesValue = useMemo(
+    () =>
+      Math.max(
+        1,
+        ...dashboard.salesTrend.map((item) =>
+          Math.max(Number(item.orderedValue), Number(item.collectedValue)),
+        ),
+      ),
+    [dashboard.salesTrend],
+  );
+
+  const collectionRate = percent(
+    dashboard.summary.collectedValueMonth,
+    dashboard.summary.orderedValueMonth,
+  );
 
   return (
     <Stack flex={1} gap="xl" miw={0}>
@@ -106,237 +224,460 @@ const AnalyticsPage = () => {
             Operations Dashboard
           </Title>
           <Text c="dimmed">
-            Track demand, monthly sales, batch fill speed, and payment proof decisions.
+            Live sales, fulfillment, batch, payment, and inventory signals from your workflow.
           </Text>
         </Stack>
 
-        <Button visibleFrom="sm" leftSection={<IconPlus size={16} />}>
-          New record
-        </Button>
+        <Tooltip label="Refresh analytics" withArrow>
+          <ActionIcon
+            visibleFrom="sm"
+            size="lg"
+            variant="light"
+            onClick={() => loadDashboard("refresh")}
+            loading={refreshing}
+          >
+            <IconRefresh size={18} />
+          </ActionIcon>
+        </Tooltip>
       </Group>
 
-      <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="md">
-        {summaryCards.map(({ label, value, detail, icon: Icon }) => (
-          <Card key={label} withBorder p="md">
-            <Group justify="space-between" align="flex-start" wrap="nowrap">
-              <Stack gap={4}>
-                <Text size="sm" c="dimmed" fw={700}>
-                  {label}
-                </Text>
-                <Title order={3}>{value}</Title>
-                <Text size="xs" c="dimmed">
-                  {detail}
-                </Text>
-              </Stack>
-              <ThemeIcon color="red" variant="light" size={42} radius="md">
-                <Icon size={22} />
-              </ThemeIcon>
-            </Group>
-          </Card>
-        ))}
-      </SimpleGrid>
+      {loading ? (
+        <LoadingState />
+      ) : (
+        <>
+          <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="md">
+            <SummaryCard
+              label="Pending Proofs"
+              value={numberFormatter.format(dashboard.summary.pendingProofs)}
+              detail="Need payment review"
+              icon={IconPhotoScan}
+              color="orange"
+            />
+            <SummaryCard
+              label="Collected This Month"
+              value={formatCurrency(dashboard.summary.collectedValueMonth, {
+                minimumFractionDigits: 0,
+              })}
+              detail={`${collectionRate}% of ordered value`}
+              icon={IconCreditCard}
+              color="green"
+            />
+            <SummaryCard
+              label="Month Orders"
+              value={numberFormatter.format(dashboard.summary.monthOrders)}
+              detail={`${numberFormatter.format(dashboard.summary.todayOrders)} created today`}
+              icon={IconShoppingBag}
+              color="red"
+            />
+            <SummaryCard
+              label="Active Batches"
+              value={numberFormatter.format(dashboard.summary.activeBatches)}
+              detail={`${numberFormatter.format(dashboard.summary.lowStockCount)} stock alerts`}
+              icon={IconClipboardList}
+              color="blue"
+            />
+          </SimpleGrid>
 
-      <Tabs defaultValue="most-ordered" variant="outline" radius="md">
-        <ScrollArea type="never">
-          <Tabs.List style={{ minWidth: rem(680) }}>
-            <Tabs.Tab value="most-ordered" leftSection={<IconCar size={16} />}>
-              Most Ordered
-            </Tabs.Tab>
-            <Tabs.Tab value="sales" leftSection={<IconCreditCard size={16} />}>
-              Sales Per Month
-            </Tabs.Tab>
-            <Tabs.Tab value="batch-fill" leftSection={<IconClock size={16} />}>
-              Batch Fill Time
-            </Tabs.Tab>
-          </Tabs.List>
-        </ScrollArea>
-
-        <Tabs.Panel value="most-ordered" pt="md">
-          <Paper withBorder p="md" radius="md">
-            <Group justify="space-between" mb="md">
-              <Box>
-                <Title order={3} size="h4">
-                  Most Ordered Car Magic Collar
-                </Title>
-                <Text size="sm" c="dimmed">
-                  Highest-demand fitments for planning inventory and production batches.
-                </Text>
-              </Box>
-              <Badge color="red" variant="light">
-                Last 90 days
-              </Badge>
-            </Group>
-            <Table.ScrollContainer minWidth={620}>
-              <Table verticalSpacing="sm">
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Vehicle</Table.Th>
-                    <Table.Th>SKU</Table.Th>
-                    <Table.Th>Orders</Table.Th>
-                    <Table.Th>Demand Share</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {mostOrderedRows.map(([vehicle, sku, orders, share]) => (
-                    <Table.Tr key={sku}>
-                      <Table.Td fw={700}>{vehicle}</Table.Td>
-                      <Table.Td>{sku}</Table.Td>
-                      <Table.Td>{orders}</Table.Td>
-                      <Table.Td>
-                        <Group gap="sm" wrap="nowrap">
-                          <Progress value={Number.parseInt(share, 10)} w={120} />
-                          <Text size="sm">{share}</Text>
+          <Grid gap="md">
+            <Grid.Col span={{ base: 12, lg: 3 }}>
+              <Paper withBorder radius="md" p="md" h="100%">
+                <Stack gap="md">
+                  <Group gap="xs">
+                    <ThemeIcon color="orange" variant="light" radius="sm">
+                      <IconAlertTriangle size={16} />
+                    </ThemeIcon>
+                    <Title order={2} size="h4">
+                      Action Queue
+                    </Title>
+                  </Group>
+                  <Stack gap="sm">
+                    {dashboard.actionItems.map((item) => (
+                      <Button
+                        key={item.label}
+                        component={Link}
+                        href={item.href}
+                        variant="light"
+                        color={item.tone}
+                        justify="space-between"
+                        rightSection={<IconArrowRight size={16} />}
+                        fullWidth
+                      >
+                        <Group justify="space-between" w="100%" wrap="nowrap">
+                          <Text size="sm" fw={700} truncate="end">
+                            {item.label}
+                          </Text>
+                          <Badge color={item.tone} variant="filled">
+                            {numberFormatter.format(item.value)}
+                          </Badge>
                         </Group>
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-            </Table.ScrollContainer>
-          </Paper>
-        </Tabs.Panel>
-
-        <Tabs.Panel value="sales" pt="md">
-          <Paper withBorder p="md" radius="md">
-            <Title order={3} size="h4">
-              Sales Per Month
-            </Title>
-            <Text size="sm" c="dimmed" mb="md">
-              Monthly paid order value for sales pacing and reseller demand checks.
-            </Text>
-            <Stack gap="md">
-              {salesRows.map(([month, amount, value]) => (
-                <Box key={month}>
-                  <Group justify="space-between" mb={4}>
-                    <Text size="sm" fw={700}>
-                      {month}
-                    </Text>
-                    <Text size="sm">{amount}</Text>
-                  </Group>
-                  <Progress value={value} color="red" radius="xl" />
-                </Box>
-              ))}
-            </Stack>
-          </Paper>
-        </Tabs.Panel>
-
-        <Tabs.Panel value="batch-fill" pt="md">
-          <SimpleGrid cols={{ base: 1, md: 3 }} spacing="md">
-            {batchRows.map(([batch, size, time, fill]) => (
-              <Paper key={batch} withBorder p="md" radius="md">
-                <Stack gap="sm">
-                  <Group justify="space-between" wrap="nowrap">
-                    <Text fw={800}>{batch}</Text>
-                    <Badge color="blue" variant="light">
-                      {size}
-                    </Badge>
-                  </Group>
-                  <Text size="sm" c="dimmed">
-                    Time allotted before batch is full
-                  </Text>
-                  <Title order={3}>{time}</Title>
-                  <Progress value={fill} color={fill > 75 ? "green" : "yellow"} radius="xl" />
+                      </Button>
+                    ))}
+                  </Stack>
                 </Stack>
               </Paper>
-            ))}
-          </SimpleGrid>
-        </Tabs.Panel>
-      </Tabs>
+            </Grid.Col>
 
-      <Paper withBorder p="md" radius="md">
-        <Group justify="space-between" mb="md" align="flex-start">
-          <Box>
-            <Group gap="xs">
-              <ThemeIcon color="red" variant="light" radius="md">
-                <IconPhotoScan size={18} />
-              </ThemeIcon>
-              <Title order={2} size="h3">
-                Payment Proof Review
-              </Title>
-            </Group>
-            <Text size="sm" c="dimmed" mt="xs">
-              Approve valid customer uploads to continue fulfillment, or reject them for correction.
-            </Text>
-          </Box>
-          <Badge color="yellow" variant="light" size="lg">
-            {proofRows.length} pending
-          </Badge>
-        </Group>
-
-        <Table.ScrollContainer minWidth={780}>
-          <Table verticalSpacing="sm">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Order</Table.Th>
-                <Table.Th>Customer</Table.Th>
-                <Table.Th>Method</Table.Th>
-                <Table.Th>Amount</Table.Th>
-                <Table.Th>Uploaded</Table.Th>
-                <Table.Th>Proof</Table.Th>
-                <Table.Th>Decision</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {proofRows.map(([order, customer, method, amount, uploaded]) => (
-                <Table.Tr key={order}>
-                  <Table.Td fw={700}>{order}</Table.Td>
-                  <Table.Td>{customer}</Table.Td>
-                  <Table.Td>{method}</Table.Td>
-                  <Table.Td>{amount}</Table.Td>
-                  <Table.Td>{uploaded}</Table.Td>
-                  <Table.Td>
-                    <Button size="xs" variant="light" leftSection={<IconPhotoScan size={14} />}>
-                      View
-                    </Button>
-                  </Table.Td>
-                  <Table.Td>
-                    <Group gap="xs" wrap="nowrap">
-                      <Tooltip label="Approve proof">
-                        <ActionIcon
-                          color="green"
-                          variant="light"
-                          aria-label={`Approve payment proof for ${order}`}
-                          onClick={() => handleProofDecision("approved", order)}
-                        >
-                          <IconCheck size={16} />
-                        </ActionIcon>
-                      </Tooltip>
-                      <Tooltip label="Reject proof">
-                        <ActionIcon
-                          color="red"
-                          variant="light"
-                          aria-label={`Reject payment proof for ${order}`}
-                          onClick={() => handleProofDecision("rejected", order)}
-                        >
-                          <IconX size={16} />
-                        </ActionIcon>
-                      </Tooltip>
+            <Grid.Col span={{ base: 12, lg: 9 }}>
+              <Paper withBorder radius="md" p="md" h="100%">
+                <Group justify="space-between" mb="md">
+                  <Box>
+                    <Group gap="xs">
+                      <ThemeIcon color="green" variant="light" radius="sm">
+                        <IconTrendingUp size={16} />
+                      </ThemeIcon>
+                      <Title order={2} size="h4">
+                        Sales and Collection Trend
+                      </Title>
                     </Group>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-      </Paper>
+                    <Text size="sm" c="dimmed" mt={4}>
+                      Ordered value compared with verified cash collected.
+                    </Text>
+                  </Box>
+                  <Badge color="green" variant="light">
+                    6 months
+                  </Badge>
+                </Group>
 
-      <SimpleGrid cols={{ base: 1, md: 3 }} spacing="md">
-        {workflowCards.map(({ label, description, icon: Icon }) => (
-          <Paper key={label} withBorder p="md" radius="md">
-            <Group align="flex-start" wrap="nowrap">
-              <ThemeIcon color="red" variant="light" radius="md">
-                <Icon size={18} />
-              </ThemeIcon>
-              <Box>
-                <Text fw={800}>{label}</Text>
-                <Text size="sm" c="dimmed">
-                  {description}
-                </Text>
-              </Box>
-            </Group>
-          </Paper>
-        ))}
-      </SimpleGrid>
+                <Stack gap="md">
+                  {dashboard.salesTrend.map((item) => (
+                    <Box key={item.month}>
+                      <Group justify="space-between" mb={6} gap="xs">
+                        <Text size="sm" fw={800}>
+                          {item.month}
+                        </Text>
+                        <Text size="xs" c="dimmed">
+                          {numberFormatter.format(item.orderCount)} orders
+                        </Text>
+                      </Group>
+                      <Stack gap={5}>
+                        <Progress
+                          value={(Number(item.orderedValue) / maxSalesValue) * 100}
+                          color="red"
+                          radius="xl"
+                        />
+                        <Progress
+                          value={(Number(item.collectedValue) / maxSalesValue) * 100}
+                          color="green"
+                          radius="xl"
+                        />
+                      </Stack>
+                      <Group justify="space-between" mt={4}>
+                        <Text size="xs" c="red.5">
+                          Ordered {formatCurrency(item.orderedValue, { minimumFractionDigits: 0 })}
+                        </Text>
+                        <Text size="xs" c="green.5">
+                          Collected{" "}
+                          {formatCurrency(item.collectedValue, { minimumFractionDigits: 0 })}
+                        </Text>
+                      </Group>
+                    </Box>
+                  ))}
+                </Stack>
+              </Paper>
+            </Grid.Col>
+          </Grid>
+
+          <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
+            <Paper withBorder radius="md" p="md">
+              <Group justify="space-between" mb="md">
+                <Title order={2} size="h4">
+                  Order Pipeline
+                </Title>
+                <Badge color="red" variant="light">
+                  {numberFormatter.format(orderStatusTotal)} orders
+                </Badge>
+              </Group>
+              <Stack gap="sm">
+                {dashboard.orderStatus.map((item) => (
+                  <Box key={item.status}>
+                    <Group justify="space-between" mb={4}>
+                      <StatusBadge
+                        label={item.status}
+                        color={getOrderStatusColor(item.status)}
+                        description={getOrderStatusDescription(item.status)}
+                        size="sm"
+                      />
+                      <Text size="sm" fw={800}>
+                        {numberFormatter.format(item.count)}
+                      </Text>
+                    </Group>
+                    <Progress
+                      value={percent(item.count, orderStatusTotal)}
+                      color={getOrderStatusColor(item.status)}
+                      radius="xl"
+                    />
+                  </Box>
+                ))}
+              </Stack>
+            </Paper>
+
+            <Paper withBorder radius="md" p="md">
+              <Group justify="space-between" mb="md">
+                <Title order={2} size="h4">
+                  Payment Pipeline
+                </Title>
+                <Badge color="green" variant="light">
+                  {formatCurrency(dashboard.summary.outstandingValue, {
+                    minimumFractionDigits: 0,
+                  })}{" "}
+                  outstanding
+                </Badge>
+              </Group>
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                <Center>
+                  <RingProgress
+                    size={168}
+                    thickness={18}
+                    roundCaps
+                    sections={dashboard.paymentStatus.map((item) => ({
+                      value: percent(item.count, paymentStatusTotal),
+                      color: getPaymentStatusColor(item.status),
+                    }))}
+                    label={
+                      <Text ta="center" fw={800}>
+                        {numberFormatter.format(paymentStatusTotal)}
+                        <Text size="xs" c="dimmed">
+                          orders
+                        </Text>
+                      </Text>
+                    }
+                  />
+                </Center>
+                <Stack gap="sm" justify="center">
+                  {dashboard.paymentStatus.map((item) => (
+                    <Group key={item.status} justify="space-between" wrap="nowrap">
+                      <StatusBadge
+                        label={formatStatusLabel(item.status)}
+                        color={getPaymentStatusColor(item.status)}
+                        description={getPaymentStatusDescription(item.status)}
+                        size="sm"
+                        variant="dot"
+                      />
+                      <Text size="sm" fw={800}>
+                        {numberFormatter.format(item.count)}
+                      </Text>
+                    </Group>
+                  ))}
+                </Stack>
+              </SimpleGrid>
+            </Paper>
+          </SimpleGrid>
+
+          <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="md">
+            <Paper withBorder radius="md" p="md">
+              <Group justify="space-between" mb="md">
+                <Group gap="xs">
+                  <ThemeIcon color="blue" variant="light" radius="sm">
+                    <IconClipboardList size={16} />
+                  </ThemeIcon>
+                  <Title order={2} size="h4">
+                    Active Batches
+                  </Title>
+                </Group>
+                <Button
+                  component={Link}
+                  href="/admin/batches"
+                  variant="subtle"
+                  size="xs"
+                  rightSection={<IconArrowRight size={14} />}
+                >
+                  View batches
+                </Button>
+              </Group>
+              <Table.ScrollContainer minWidth={560}>
+                <Table verticalSpacing="sm">
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>Batch</Table.Th>
+                      <Table.Th>Status</Table.Th>
+                      <Table.Th>Fill</Table.Th>
+                      <Table.Th>Age</Table.Th>
+                      <Table.Th ta="right">Value</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {dashboard.activeBatches.map((batch) => (
+                      <Table.Tr key={batch.batchId}>
+                        <Table.Td fw={800}>#{batch.batchNumber}</Table.Td>
+                        <Table.Td>
+                          <StatusBadge
+                            label={batch.status}
+                            color={getBatchStatusColor(batch.status)}
+                            description={getBatchStatusDescription(batch.status)}
+                            size="sm"
+                          />
+                        </Table.Td>
+                        <Table.Td>
+                          <Stack gap={2}>
+                            <Progress value={batch.fillPercent} radius="xl" />
+                            <Text size="xs" c="dimmed">
+                              {numberFormatter.format(batch.quantity)} items
+                            </Text>
+                          </Stack>
+                        </Table.Td>
+                        <Table.Td>{numberFormatter.format(batch.ageDays)}d</Table.Td>
+                        <Table.Td ta="right" fw={800}>
+                          {formatCurrency(batch.value, { minimumFractionDigits: 0 })}
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Table.ScrollContainer>
+            </Paper>
+
+            <Paper withBorder radius="md" p="md">
+              <Group justify="space-between" mb="md">
+                <Group gap="xs">
+                  <ThemeIcon color="red" variant="light" radius="sm">
+                    <IconPackage size={16} />
+                  </ThemeIcon>
+                  <Title order={2} size="h4">
+                    Demand and Stock
+                  </Title>
+                </Group>
+                <Button
+                  component={Link}
+                  href="/admin/cars-magic-collars"
+                  variant="subtle"
+                  size="xs"
+                  rightSection={<IconArrowRight size={14} />}
+                >
+                  View catalog
+                </Button>
+              </Group>
+              <Table.ScrollContainer minWidth={560}>
+                <Table verticalSpacing="sm">
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>Top Collar</Table.Th>
+                      <Table.Th>Sold</Table.Th>
+                      <Table.Th>Stock</Table.Th>
+                      <Table.Th ta="right">Revenue</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {dashboard.topCollars.map((collar) => (
+                      <Table.Tr key={collar.carId}>
+                        <Table.Td>
+                          <Text fw={800}>{collar.vehicle}</Text>
+                          <Text size="xs" c="dimmed">
+                            MC-{collar.collarReferenceNumber ?? "N/A"}
+                          </Text>
+                        </Table.Td>
+                        <Table.Td>{numberFormatter.format(collar.quantity)}</Table.Td>
+                        <Table.Td>
+                          <Badge color={collar.stock <= 5 ? "orange" : "green"} variant="light">
+                            {numberFormatter.format(collar.stock)}
+                          </Badge>
+                        </Table.Td>
+                        <Table.Td ta="right" fw={800}>
+                          {formatCurrency(collar.revenue, { minimumFractionDigits: 0 })}
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Table.ScrollContainer>
+            </Paper>
+          </SimpleGrid>
+
+          <SimpleGrid cols={{ base: 1, lg: 3 }} spacing="md">
+            <Paper withBorder radius="md" p="md">
+              <Title order={2} size="h4" mb="md">
+                Low Stock Alerts
+              </Title>
+              <Stack gap="sm">
+                {dashboard.lowStockCollars.length === 0 ? (
+                  <Text size="sm" c="dimmed">
+                    No low stock collars right now.
+                  </Text>
+                ) : (
+                  dashboard.lowStockCollars.map((collar) => (
+                    <Group key={collar.carId} justify="space-between" wrap="nowrap">
+                      <Box miw={0}>
+                        <Text size="sm" fw={800} truncate="end">
+                          {collar.vehicle}
+                        </Text>
+                        <Text size="xs" c="dimmed">
+                          Demand 30d: {numberFormatter.format(collar.demand30Days)}
+                        </Text>
+                      </Box>
+                      <Badge color="orange" variant="light">
+                        Stock {numberFormatter.format(collar.stock)}
+                      </Badge>
+                    </Group>
+                  ))
+                )}
+              </Stack>
+            </Paper>
+
+            <Paper withBorder radius="md" p="md">
+              <Title order={2} size="h4" mb="md">
+                Payment Proofs
+              </Title>
+              <Stack gap="sm">
+                {dashboard.paymentProofs.map((proof) => (
+                  <Group key={proof.status} justify="space-between" wrap="nowrap">
+                    <Box>
+                      <Badge
+                        color={
+                          proof.status === "APPROVED"
+                            ? "green"
+                            : proof.status === "REJECTED"
+                              ? "red"
+                              : "yellow"
+                        }
+                        variant="light"
+                      >
+                        {formatStatusLabel(proof.status)}
+                      </Badge>
+                      <Text size="xs" c="dimmed" mt={4}>
+                        {numberFormatter.format(proof.count)} uploads
+                      </Text>
+                    </Box>
+                    <Text size="sm" fw={800}>
+                      {formatCurrency(proof.amount, { minimumFractionDigits: 0 })}
+                    </Text>
+                  </Group>
+                ))}
+              </Stack>
+            </Paper>
+
+            <Paper withBorder radius="md" p="md">
+              <Group gap="xs" mb="md">
+                <ThemeIcon color="grape" variant="light" radius="sm">
+                  <IconMapPin size={16} />
+                </ThemeIcon>
+                <Title order={2} size="h4">
+                  Top Locations
+                </Title>
+              </Group>
+              <Stack gap="sm">
+                {dashboard.geography.map((place) => (
+                  <Group
+                    key={`${place.city}-${place.province}`}
+                    justify="space-between"
+                    wrap="nowrap"
+                  >
+                    <Box miw={0}>
+                      <Text size="sm" fw={800} truncate="end">
+                        {place.city}
+                      </Text>
+                      <Text size="xs" c="dimmed" truncate="end">
+                        {place.province}
+                      </Text>
+                    </Box>
+                    <Badge color="grape" variant="light">
+                      {numberFormatter.format(place.orderCount)}
+                    </Badge>
+                  </Group>
+                ))}
+              </Stack>
+            </Paper>
+          </SimpleGrid>
+        </>
+      )}
     </Stack>
   );
 };

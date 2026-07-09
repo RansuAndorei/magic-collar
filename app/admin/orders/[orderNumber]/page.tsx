@@ -22,7 +22,6 @@ const Page = async ({ params }: Props) => {
   const {
     data: { user },
   } = await supabaseClient.auth.getUser();
-
   if (!user) redirect("/sign-in");
 
   let order;
@@ -32,7 +31,6 @@ const Page = async ({ params }: Props) => {
   try {
     [order, paymentChannelList, approvedPaymentTotal] = await Promise.all([
       getCustomerOrder(supabaseClient, {
-        userId: user.id,
         orderNumber,
       }),
       getPaymentChannelList(supabaseClient),

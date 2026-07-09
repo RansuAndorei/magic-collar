@@ -4,6 +4,8 @@ import {
   formatDate,
   getBatchStatusColor,
   getBatchStatusDescription,
+  getOrderItemStatusColor,
+  getOrderItemStatusDescription,
   getOrderStatusColor,
   getOrderStatusDescription,
   getOrderTotal,
@@ -11,7 +13,7 @@ import {
   getPaymentStatusDescription,
   getProductSubtitle,
 } from "@/utils/functions";
-import { OrderWithOrderItemType } from "@/utils/types";
+import { BatchStatusEnum, OrderItemStatusEnum, OrderWithOrderItemType } from "@/utils/types";
 import {
   Badge,
   Box,
@@ -143,64 +145,64 @@ const OrderItem = ({ order }: Props) => {
             </Badge>
           </Group>
 
-          {visibleSidebarItems.map((item) => (
-            <Group key={item.order_item_id} gap="sm" wrap="nowrap">
-              <Box
-                w={52}
-                h={52}
-                style={{
-                  borderRadius: rem(6),
-                  overflow: "hidden",
-                  background: "var(--mantine-color-default)",
-                  flexShrink: 0,
-                }}
-              >
-                {item.order_item_car_image_attachment?.attachment_path ? (
-                  <Image
-                    src={item.order_item_car_image_attachment.attachment_path}
-                    alt={`${item.order_item_car_make} ${item.order_item_car_model}`}
-                    w={52}
-                    h={52}
-                    fit="cover"
-                  />
-                ) : null}
-              </Box>
-              <Stack gap={1} style={{ flex: 1, minWidth: 0 }}>
-                <Text size="sm" fw={700} lineClamp={1}>
-                  {item.order_item_car_make} {item.order_item_car_model}
+          {visibleSidebarItems.map((item) => {
+            const isBatch = item.order_item_status === "PENDING" && item.order_item_batch;
+            const status = (
+              isBatch ? item.order_item_batch?.batch_status : item.order_item_status
+            ) as BatchStatusEnum | OrderItemStatusEnum;
+            const color = isBatch
+              ? getBatchStatusColor(status as BatchStatusEnum)
+              : getOrderItemStatusColor(status as OrderItemStatusEnum);
+            const description = isBatch
+              ? getBatchStatusDescription(status as BatchStatusEnum)
+              : getOrderItemStatusDescription(status as OrderItemStatusEnum);
+
+            return (
+              <Group key={item.order_item_id} gap="sm" wrap="nowrap">
+                <Box
+                  w={52}
+                  h={52}
+                  style={{
+                    borderRadius: rem(6),
+                    overflow: "hidden",
+                    background: "var(--mantine-color-default)",
+                    flexShrink: 0,
+                  }}
+                >
+                  {item.order_item_car_image_attachment?.attachment_path ? (
+                    <Image
+                      src={item.order_item_car_image_attachment.attachment_path}
+                      alt={`${item.order_item_car_make} ${item.order_item_car_model}`}
+                      w={52}
+                      h={52}
+                      fit="cover"
+                    />
+                  ) : null}
+                </Box>
+                <Stack gap={1} style={{ flex: 1, minWidth: 0 }}>
+                  <Text size="sm" fw={700} lineClamp={1}>
+                    {item.order_item_car_make} {item.order_item_car_model}
+                  </Text>
+                  <Text size="xs" c="dimmed" lineClamp={1}>
+                    {getProductSubtitle(
+                      item.order_item_car_model_code,
+                      item.order_item_car_model_year_start,
+                      item.order_item_car_model_year_end,
+                    )}
+                  </Text>
+                  <Text size="sm" fw={700} lineClamp={1}>
+                    x{item.order_item_quantity}
+                  </Text>
+                </Stack>
+                <StatusBadge label={status} color={color} description={description} size="sm" />
+                <Text size="sm" fw={700} style={{ flexShrink: 0 }}>
+                  {formatCurrency(item.order_item_price * item.order_item_quantity, {
+                    minimumFractionDigits: 0,
+                  })}
                 </Text>
-                <Text size="xs" c="dimmed" lineClamp={1}>
-                  {getProductSubtitle(
-                    item.order_item_car_model_code,
-                    item.order_item_car_model_year_start,
-                    item.order_item_car_model_year_end,
-                  )}
-                </Text>
-                <Text size="sm" fw={700} lineClamp={1}>
-                  x{item.order_item_quantity}
-                </Text>
-              </Stack>
-              <StatusBadge
-                label={item.order_item_batch?.batch_status ?? order.order_status}
-                color={
-                  item.order_item_batch
-                    ? getBatchStatusColor(item.order_item_batch.batch_status)
-                    : getOrderStatusColor(order.order_status)
-                }
-                description={
-                  item.order_item_batch
-                    ? getBatchStatusDescription(item.order_item_batch.batch_status)
-                    : getOrderStatusDescription(order.order_status)
-                }
-                size="sm"
-              />
-              <Text size="sm" fw={700} style={{ flexShrink: 0 }}>
-                {formatCurrency(item.order_item_price * item.order_item_quantity, {
-                  minimumFractionDigits: 0,
-                })}
-              </Text>
-            </Group>
-          ))}
+              </Group>
+            );
+          })}
 
           {hiddenSidebarCount > 0 && (
             <UnstyledButton

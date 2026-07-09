@@ -310,8 +310,9 @@ DECLARE
   var_total_down_payment NUMERIC := 0;
   var_down_payment_fee NUMERIC;
   var_down_payment_amount NUMERIC;
-  var_batch_limit INT := 0;
   var_current_batch_limit INT := 0;
+  var_computed_batch_limit INT := 0;
+  var_system_batch_limit INT := 0;
   var_current_batch_id UUID;
   var_current_batch_address_details JSONB;
   var_order_items JSONB;
@@ -346,14 +347,11 @@ BEGIN
   END IF;
 
   -- get the batch limit
-  SELECT system_setting_value::INT
-  INTO var_batch_limit
-  FROM system_setting_table
-  WHERE system_setting_key = 'BATCH_LIMIT';
-
-  IF NOT FOUND OR var_batch_limit = 0 THEN
-    RAISE EXCEPTION 'Missing Batch Limit';
-  END IF;
+  SELECT batch_limit
+  INTO var_current_batch_limit
+  FROM batch_table
+  ORDER BY batch_date_created DESC
+  LIMIT 1;
 
   -- fetch order item data (includes magic_collar_id and magic_collar_stock_quantity)
   SELECT JSONB_AGG(ROW_TO_JSON(item_details))
@@ -536,7 +534,8 @@ BEGIN
         order_item_car_image_attachment_id,
         order_item_order_id,
         order_item_batch_id,
-        order_item_car_id
+        order_item_car_id,
+        order_item_status
       ) VALUES (
         var_stock_deduct,
         (var_item->>'magic_collar_price')::NUMERIC,
@@ -554,7 +553,8 @@ BEGIN
         (var_item->>'car_image_attachment_id')::UUID,
         var_order_id,
         NULL,  -- fulfilled from stock, no batch needed
-        (var_item->>'car_id')::UUID
+        (var_item->>'car_id')::UUID,
+        'IN STOCK'
       )
       RETURNING order_item_id
       INTO var_order_item_id;
@@ -589,12 +589,13 @@ BEGIN
     -- get latest pending batch and its remaining capacity
     SELECT
       batch_id,
-      var_batch_limit - COALESCE(SUM(order_item_quantity), 0)
+      var_current_batch_limit - COALESCE(SUM(order_item_quantity), 0)
     INTO
       var_current_batch_id,
-      var_current_batch_limit
+      var_computed_batch_limit
     FROM batch_table
-    LEFT JOIN order_item_table ON order_item_batch_id = batch_id
+    LEFT JOIN order_item_table
+      ON order_item_batch_id = batch_id
       AND order_item_is_disabled = false
     WHERE batch_is_disabled = false
       AND batch_status = 'PENDING'
@@ -603,8 +604,13 @@ BEGIN
     LIMIT 1;
 
     -- no pending batch or batch is full, create a new one
-    IF var_current_batch_id IS NULL OR var_current_batch_limit = 0 THEN
-      INSERT INTO batch_table DEFAULT VALUES
+    IF var_current_batch_id IS NULL OR var_computed_batch_limit = 0 THEN
+      SELECT system_setting_value
+      INTO var_system_batch_limit
+      FROM system_setting_table
+      WHERE system_setting_key = 'BATCH_LIMIT';
+
+      INSERT INTO batch_table (batch_limit) VALUES (var_system_batch_limit::INT)
       RETURNING batch_id INTO var_current_batch_id;
 
       INSERT INTO batch_status_log_table (
@@ -617,10 +623,10 @@ BEGIN
         var_current_batch_id
       );
 
-      var_current_batch_limit := var_batch_limit;
+      var_computed_batch_limit := var_current_batch_limit;
     END IF;
 
-    var_batch_remaining := var_current_batch_limit;
+    var_batch_remaining := var_computed_batch_limit;
     var_updated_items := '[]'::JSONB;
 
     -- iterate each item and fill batch, splitting quantity if needed
@@ -1488,9 +1494,10 @@ AS $$
 DECLARE
   input_batch_id   UUID := (input_data->>'batchId')::UUID;
   input_next_status batch_status := (input_data->>'nextStatus')::batch_status;
-  input_updated_by UUID := (input_data->>'updatedBy')::UUID;
+  input_user_id UUID := (input_data->>'userId')::UUID;
 
   var_old_status batch_status;
+  var_order RECORD;
 BEGIN
   SELECT batch_status
   INTO var_old_status
@@ -1520,13 +1527,42 @@ BEGIN
     batch_status_log_old_status,
     batch_status_log_new_status,
     batch_status_log_batch_id,
-    batch_status_log_updated_by
+    batch_status_log_created_by
   ) VALUES (
     var_old_status,
     input_next_status,
     input_batch_id,
-    input_updated_by
+    input_user_id
   );
+
+  IF input_next_status = 'READY FOR SHIPPING' THEN
+    FOR var_order IN
+      SELECT DISTINCT
+        order_number,
+        order_user_id,
+        order_payment_status
+      FROM order_item_table
+      JOIN order_table
+        ON order_id = order_item_order_id
+      WHERE order_item_batch_id = input_batch_id
+        AND order_item_is_disabled = false
+        AND order_is_disabled = false
+    LOOP
+      IF var_order.order_payment_status IS DISTINCT FROM 'PAID' THEN
+        INSERT INTO notification_table (
+          notification_content,
+          notification_redirect_url,
+          notification_type,
+          notification_user_id
+        ) VALUES (
+          'Your order #' || var_order.order_number::TEXT || ' is ready for shipping, but payment has not been confirmed yet. Please settle your payment to avoid delays.',
+          '/user/orders/' || var_order.order_number::TEXT,
+          'PAYMENT_REMINDER',
+          var_order.order_user_id
+        );
+      END IF;
+    END LOOP;
+  END IF;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1640,6 +1676,10 @@ DECLARE
   input_order_payment_id UUID := (input_data->>'orderPaymentId')::UUID;
   input_reason TEXT := input_data->>'reason';
   input_processed_by_user_id UUID := (input_data->>'processedByUserId')::UUID;
+
+  var_order_id UUID;
+  var_customer_user_id UUID;
+  var_order_number INT;
 BEGIN
   UPDATE order_payment_table
   SET
@@ -1650,7 +1690,28 @@ BEGIN
     order_payment_processed_by_admin_user_id = input_processed_by_user_id,
     order_payment_date_updated = NOW()
   WHERE order_payment_id = input_order_payment_id
-    AND order_payment_request_status = 'PENDING';
+    AND order_payment_request_status = 'PENDING'
+  RETURNING order_payment_order_id
+  INTO var_order_id;
+
+  SELECT
+    order_user_id,
+    order_number
+  INTO
+    var_customer_user_id,
+    var_order_number
+  FROM order_table
+  WHERE order_id = var_order_id;
+  
+  INSERT INTO notification_table
+    (notification_content, notification_redirect_url, notification_type, notification_user_id)
+  VALUES
+    (
+      'Your payment proof for Order #' || var_order_number || ' was rejected. Please upload a new payment proof.',
+      '/user/orders/' || var_order_number,
+      'PAYMENT_PROOF_REJECTED',
+      var_customer_user_id
+    );
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1669,6 +1730,8 @@ DECLARE
   var_approved_payment_total NUMERIC;
   var_paid_total NUMERIC;
   var_next_status order_payment_status;
+  var_customer_user_id UUID;
+  var_order_number INT;
 BEGIN
   -- Approve the payment proof
   UPDATE order_payment_table
@@ -1721,9 +1784,34 @@ BEGIN
   -- Update order payment status
   UPDATE order_table
   SET
-    order_payment_status = var_next_status,
-    order_date_updated = NOW()
-  WHERE order_id = var_order_id;
+    order_payment_status = var_next_status
+  WHERE order_id = var_order_id
+  RETURNING order_user_id, order_number
+  INTO var_customer_user_id, var_order_number;
+
+  INSERT INTO notification_table
+    (notification_content, notification_redirect_url, notification_type, notification_user_id, notification_date_created)
+  VALUES
+    (
+      'Your payment proof for Order #' || var_order_number || ' has been approved. We''ll continue processing your order.',
+      '/user/orders/' || var_order_number,
+      'PAYMENT_PROOF_APPROVED',
+      var_customer_user_id,
+      clock_timestamp()
+    );
+  
+  IF var_next_status = 'PAID' THEN
+    INSERT INTO notification_table
+      (notification_content, notification_redirect_url, notification_type, notification_user_id, notification_date_created)
+    VALUES
+      (
+        'Your payment for Order #' || var_order_number || ' has been completed. Thank you!',
+        '/user/orders/' || var_order_number,
+        'PAYMENT_FULLY_PAID',
+        var_customer_user_id,
+        clock_timestamp()
+      );
+  END IF;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -2359,5 +2447,822 @@ BEGIN
     AND attachment_is_disabled = false;
 
   RETURN return_data;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_admin_analytics_dashboard(input_data JSONB)
+RETURNS JSONB
+AS $$
+DECLARE
+  input_months INT := COALESCE((input_data->>'months')::INT, 6);
+  input_top_limit INT := COALESCE((input_data->>'topLimit')::INT, 5);
+  input_low_stock_threshold INT := COALESCE((input_data->>'lowStockThreshold')::INT, 5);
+
+  var_batch_limit INT := 0;
+
+  return_data JSONB;
+BEGIN
+  SELECT COALESCE(system_setting_value::INT, 0)
+  INTO var_batch_limit
+  FROM system_setting_table
+  WHERE system_setting_key = 'BATCH_LIMIT'
+  LIMIT 1;
+
+  WITH order_totals AS (
+    SELECT
+      o.order_id,
+      o.order_date_created,
+      o.order_status,
+      o.order_payment_status,
+      o.order_fulfillment,
+      o.order_address_city,
+      o.order_address_province,
+      COALESCE(SUM(oi.order_item_magic_collar_price * oi.order_item_quantity), 0) AS ordered_value,
+      COALESCE(o.order_down_payment_amount - o.order_down_payment_fee, 0) AS down_payment_collected
+    FROM order_table o
+    LEFT JOIN order_item_table oi
+      ON oi.order_item_order_id = o.order_id
+      AND oi.order_item_is_disabled = false
+    WHERE o.order_is_disabled = false
+    GROUP BY o.order_id
+  ),
+  approved_proofs AS (
+    SELECT
+      order_payment_order_id AS order_id,
+      COALESCE(SUM(order_payment_amount), 0) AS approved_amount
+    FROM order_payment_table
+    WHERE order_payment_request_status = 'APPROVED'
+    GROUP BY order_payment_order_id
+  ),
+  paid_totals AS (
+    SELECT
+      ot.order_id,
+      ot.ordered_value,
+      ot.down_payment_collected + COALESCE(ap.approved_amount, 0) AS collected_value
+    FROM order_totals ot
+    LEFT JOIN approved_proofs ap
+      ON ap.order_id = ot.order_id
+  ),
+  batch_totals AS (
+    SELECT
+      b.batch_id,
+      b.batch_number,
+      b.batch_date_created,
+      b.batch_status,
+      COALESCE(SUM(oi.order_item_quantity), 0) AS quantity,
+      COALESCE(SUM(oi.order_item_magic_collar_price * oi.order_item_quantity), 0) AS value
+    FROM batch_table b
+    LEFT JOIN order_item_table oi
+      ON oi.order_item_batch_id = b.batch_id
+      AND oi.order_item_is_disabled = false
+    WHERE b.batch_is_disabled = false
+    GROUP BY b.batch_id
+  ),
+  recent_item_demand AS (
+    SELECT
+      order_item_car_id AS car_id,
+      COALESCE(SUM(order_item_quantity), 0) AS demand_30_days
+    FROM order_item_table
+    WHERE order_item_is_disabled = false
+      AND order_item_date_created >= NOW() - INTERVAL '30 days'
+    GROUP BY order_item_car_id
+  ),
+  month_series AS (
+    SELECT GENERATE_SERIES(
+      DATE_TRUNC('month', NOW()) - ((GREATEST(input_months, 1) - 1) * INTERVAL '1 month'),
+      DATE_TRUNC('month', NOW()),
+      INTERVAL '1 month'
+    ) AS month_start
+  ),
+  sales_trend AS (
+    SELECT
+      TO_CHAR(ms.month_start, 'Mon YYYY') AS month_label,
+      COALESCE((
+        SELECT SUM(ot.ordered_value)
+        FROM order_totals ot
+        WHERE ot.order_date_created >= ms.month_start
+          AND ot.order_date_created < ms.month_start + INTERVAL '1 month'
+      ), 0) AS ordered_value,
+      COALESCE((
+        SELECT SUM(ot.down_payment_collected)
+        FROM order_totals ot
+        WHERE ot.order_date_created >= ms.month_start
+          AND ot.order_date_created < ms.month_start + INTERVAL '1 month'
+      ), 0)
+      + COALESCE((
+        SELECT SUM(order_payment_amount)
+        FROM order_payment_table
+        WHERE order_payment_request_status = 'APPROVED'
+          AND COALESCE(order_payment_date_updated, order_payment_date_created) >= ms.month_start
+          AND COALESCE(order_payment_date_updated, order_payment_date_created) < ms.month_start + INTERVAL '1 month'
+      ), 0) AS collected_value,
+      COALESCE((
+        SELECT COUNT(*)
+        FROM order_totals ot
+        WHERE ot.order_date_created >= ms.month_start
+          AND ot.order_date_created < ms.month_start + INTERVAL '1 month'
+      ), 0) AS order_count
+    FROM month_series ms
+    ORDER BY ms.month_start
+  ),
+  top_collars AS (
+    SELECT
+      c.car_id,
+      make_table.make || ' ' || model_table.model AS vehicle,
+      magic_collar_table.magic_collar_reference_number,
+      COALESCE(SUM(oi.order_item_quantity), 0) AS quantity,
+      COALESCE(SUM(oi.order_item_magic_collar_price * oi.order_item_quantity), 0) AS revenue,
+      magic_collar_table.magic_collar_stock_quantity AS stock
+    FROM order_item_table oi
+    INNER JOIN car_table c
+      ON c.car_id = oi.order_item_car_id
+    INNER JOIN make_table
+      ON make_table.make_id = c.car_make_id
+    INNER JOIN model_table
+      ON model_table.model_id = c.car_model_id
+    INNER JOIN magic_collar_table
+      ON magic_collar_table.magic_collar_id = c.car_magic_collar_id
+    WHERE oi.order_item_is_disabled = false
+    GROUP BY
+      c.car_id,
+      make_table.make,
+      model_table.model,
+      magic_collar_table.magic_collar_reference_number,
+      magic_collar_table.magic_collar_stock_quantity
+    ORDER BY quantity DESC, revenue DESC
+    LIMIT input_top_limit
+  ),
+  low_stock_collars AS (
+    SELECT
+      c.car_id,
+      make_table.make || ' ' || model_table.model AS vehicle,
+      magic_collar_table.magic_collar_reference_number,
+      magic_collar_table.magic_collar_stock_quantity AS stock,
+      COALESCE(recent_item_demand.demand_30_days, 0) AS demand_30_days
+    FROM car_table c
+    INNER JOIN make_table
+      ON make_table.make_id = c.car_make_id
+    INNER JOIN model_table
+      ON model_table.model_id = c.car_model_id
+    INNER JOIN magic_collar_table
+      ON magic_collar_table.magic_collar_id = c.car_magic_collar_id
+    LEFT JOIN recent_item_demand
+      ON recent_item_demand.car_id = c.car_id
+    WHERE c.car_is_disabled = false
+      AND magic_collar_table.magic_collar_is_disabled = false
+      AND (
+        magic_collar_table.magic_collar_stock_quantity <= input_low_stock_threshold
+        OR COALESCE(recent_item_demand.demand_30_days, 0) > magic_collar_table.magic_collar_stock_quantity
+      )
+    ORDER BY
+      COALESCE(recent_item_demand.demand_30_days, 0) DESC,
+      magic_collar_table.magic_collar_stock_quantity ASC
+    LIMIT input_top_limit
+  )
+  SELECT JSONB_BUILD_OBJECT(
+    'generatedAt', NOW(),
+    'summary', JSONB_BUILD_OBJECT(
+      'pendingProofs', (
+        SELECT COUNT(*)
+        FROM order_payment_table
+        WHERE order_payment_request_status = 'PENDING'
+      ),
+      'todayOrders', (
+        SELECT COUNT(*)
+        FROM order_totals
+        WHERE order_date_created >= DATE_TRUNC('day', NOW())
+      ),
+      'monthOrders', (
+        SELECT COUNT(*)
+        FROM order_totals
+        WHERE order_date_created >= DATE_TRUNC('month', NOW())
+      ),
+      'orderedValueMonth', (
+        SELECT COALESCE(SUM(ordered_value), 0)
+        FROM order_totals
+        WHERE order_date_created >= DATE_TRUNC('month', NOW())
+      ),
+      'collectedValueMonth', (
+        SELECT COALESCE(SUM(down_payment_collected), 0)
+        FROM order_totals
+        WHERE order_date_created >= DATE_TRUNC('month', NOW())
+      ) + (
+        SELECT COALESCE(SUM(order_payment_amount), 0)
+        FROM order_payment_table
+        WHERE order_payment_request_status = 'APPROVED'
+          AND COALESCE(order_payment_date_updated, order_payment_date_created) >= DATE_TRUNC('month', NOW())
+      ),
+      'outstandingValue', (
+        SELECT COALESCE(SUM(GREATEST(ordered_value - collected_value, 0)), 0)
+        FROM paid_totals
+      ),
+      'activeBatches', (
+        SELECT COUNT(*)
+        FROM batch_totals
+        WHERE batch_status <> 'CANCELLED'
+      ),
+      'lowStockCount', (
+        SELECT COUNT(*)
+        FROM low_stock_collars
+      )
+    ),
+    'salesTrend', (
+      SELECT COALESCE(
+        JSONB_AGG(
+          JSONB_BUILD_OBJECT(
+            'month', month_label,
+            'orderedValue', ordered_value,
+            'collectedValue', collected_value,
+            'orderCount', order_count
+          )
+        ),
+        '[]'::JSONB
+      )
+      FROM sales_trend
+    ),
+    'orderStatus', (
+      SELECT COALESCE(
+        JSONB_AGG(JSONB_BUILD_OBJECT('status', status, 'count', status_count) ORDER BY sort_order),
+        '[]'::JSONB
+      )
+      FROM (
+        SELECT
+          status_value::TEXT AS status,
+          COUNT(order_totals.order_id) AS status_count,
+          sort_order
+        FROM UNNEST(ENUM_RANGE(NULL::order_status)) WITH ORDINALITY AS statuses(status_value, sort_order)
+        LEFT JOIN order_totals
+          ON order_totals.order_status = statuses.status_value
+        GROUP BY status_value, sort_order
+      ) status_data
+    ),
+    'paymentStatus', (
+      SELECT COALESCE(
+        JSONB_AGG(JSONB_BUILD_OBJECT('status', status, 'count', status_count) ORDER BY sort_order),
+        '[]'::JSONB
+      )
+      FROM (
+        SELECT
+          status_value::TEXT AS status,
+          COUNT(order_totals.order_id) AS status_count,
+          sort_order
+        FROM UNNEST(ENUM_RANGE(NULL::order_payment_status)) WITH ORDINALITY AS statuses(status_value, sort_order)
+        LEFT JOIN order_totals
+          ON order_totals.order_payment_status = statuses.status_value
+        GROUP BY status_value, sort_order
+      ) status_data
+    ),
+    'fulfillment', (
+      SELECT COALESCE(
+        JSONB_AGG(JSONB_BUILD_OBJECT('fulfillment', fulfillment, 'count', fulfillment_count) ORDER BY fulfillment),
+        '[]'::JSONB
+      )
+      FROM (
+        SELECT
+          order_fulfillment::TEXT AS fulfillment,
+          COUNT(*) AS fulfillment_count
+        FROM order_totals
+        GROUP BY order_fulfillment
+      ) fulfillment_data
+    ),
+    'batchStatus', (
+      SELECT COALESCE(
+        JSONB_AGG(JSONB_BUILD_OBJECT('status', status, 'count', status_count) ORDER BY sort_order),
+        '[]'::JSONB
+      )
+      FROM (
+        SELECT
+          status_value::TEXT AS status,
+          COUNT(batch_totals.batch_id) AS status_count,
+          sort_order
+        FROM UNNEST(ENUM_RANGE(NULL::batch_status)) WITH ORDINALITY AS statuses(status_value, sort_order)
+        LEFT JOIN batch_totals
+          ON batch_totals.batch_status = statuses.status_value
+        GROUP BY status_value, sort_order
+      ) status_data
+    ),
+    'activeBatches', (
+      SELECT COALESCE(
+        JSONB_AGG(
+          JSONB_BUILD_OBJECT(
+            'batchId', batch_id,
+            'batchNumber', batch_number,
+            'status', batch_status,
+            'quantity', quantity,
+            'value', value,
+            'fillPercent', CASE
+              WHEN var_batch_limit > 0 THEN ROUND((quantity / var_batch_limit::NUMERIC) * 100, 1)
+              ELSE 100
+            END,
+            'ageDays', FLOOR(EXTRACT(EPOCH FROM (NOW() - batch_date_created)) / 86400)
+          )
+          ORDER BY batch_date_created DESC
+        ),
+        '[]'::JSONB
+      )
+      FROM (
+        SELECT *
+        FROM batch_totals
+        WHERE batch_status <> 'CANCELLED'
+        ORDER BY batch_date_created DESC
+        LIMIT input_top_limit
+      ) batch_data
+    ),
+    'topCollars', (
+      SELECT COALESCE(
+        JSONB_AGG(
+          JSONB_BUILD_OBJECT(
+            'carId', car_id,
+            'vehicle', vehicle,
+            'collarReferenceNumber', magic_collar_reference_number,
+            'quantity', quantity,
+            'revenue', revenue,
+            'stock', stock
+          )
+          ORDER BY quantity DESC, revenue DESC
+        ),
+        '[]'::JSONB
+      )
+      FROM top_collars
+    ),
+    'lowStockCollars', (
+      SELECT COALESCE(
+        JSONB_AGG(
+          JSONB_BUILD_OBJECT(
+            'carId', car_id,
+            'vehicle', vehicle,
+            'collarReferenceNumber', magic_collar_reference_number,
+            'stock', stock,
+            'demand30Days', demand_30_days
+          )
+          ORDER BY demand_30_days DESC, stock ASC
+        ),
+        '[]'::JSONB
+      )
+      FROM low_stock_collars
+    ),
+    'paymentProofs', (
+      SELECT COALESCE(
+        JSONB_AGG(
+          JSONB_BUILD_OBJECT(
+            'status', status,
+            'count', proof_count,
+            'amount', amount
+          )
+          ORDER BY sort_order
+        ),
+        '[]'::JSONB
+      )
+      FROM (
+        SELECT
+          status_value::TEXT AS status,
+          COUNT(order_payment_table.order_payment_id) AS proof_count,
+          COALESCE(SUM(order_payment_table.order_payment_amount), 0) AS amount,
+          sort_order
+        FROM UNNEST(ENUM_RANGE(NULL::order_payment_request_status)) WITH ORDINALITY AS statuses(status_value, sort_order)
+        LEFT JOIN order_payment_table
+          ON order_payment_table.order_payment_request_status = statuses.status_value
+        GROUP BY status_value, sort_order
+      ) proof_data
+    ),
+    'geography', (
+      SELECT COALESCE(
+        JSONB_AGG(
+          JSONB_BUILD_OBJECT(
+            'city', order_address_city,
+            'province', order_address_province,
+            'orderCount', order_count
+          )
+          ORDER BY order_count DESC
+        ),
+        '[]'::JSONB
+      )
+      FROM (
+        SELECT
+          order_address_city,
+          order_address_province,
+          COUNT(*) AS order_count
+        FROM order_totals
+        GROUP BY order_address_city, order_address_province
+        ORDER BY order_count DESC
+        LIMIT input_top_limit
+      ) geography_data
+    ),
+    'actionItems', JSONB_BUILD_ARRAY(
+      JSONB_BUILD_OBJECT(
+        'label', 'Review payment proofs',
+        'value', (
+          SELECT COUNT(*)
+          FROM order_payment_table
+          WHERE order_payment_request_status = 'PENDING'
+        ),
+        'href', '/admin/payment-proofs',
+        'tone', 'orange'
+      ),
+      JSONB_BUILD_OBJECT(
+        'label', 'Move ready batches',
+        'value', (
+          SELECT COUNT(*)
+          FROM batch_totals
+          WHERE batch_status = 'READY FOR ORDER'
+        ),
+        'href', '/admin/batches?batchStatus=READY%20FOR%20ORDER',
+        'tone', 'blue'
+      ),
+      JSONB_BUILD_OBJECT(
+        'label', 'Follow up unpaid orders',
+        'value', (
+          SELECT COUNT(*)
+          FROM order_totals
+          WHERE order_payment_status IN ('PENDING', 'PARTIALLY_PAID', 'OVERDUE')
+        ),
+        'href', '/admin/orders',
+        'tone', 'red'
+      ),
+      JSONB_BUILD_OBJECT(
+        'label', 'Restock low collars',
+        'value', (
+          SELECT COUNT(*)
+          FROM low_stock_collars
+        ),
+        'href', '/admin/cars-magic-collars',
+        'tone', 'yellow'
+      )
+    )
+  )
+  INTO return_data;
+
+  RETURN return_data;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION fetch_header_notifications(input_data JSONB)
+RETURNS JSONB
+AS $$
+DECLARE
+  input_user_id UUID := (input_data->>'userId')::UUID;
+  input_limit INT := (input_data->>'limit')::INT;
+
+  var_notification_data JSONB;
+  var_notification_count INT;
+
+  return_data JSONB;
+BEGIN
+  SELECT COALESCE(JSONB_AGG(TO_JSONB(notification_data)), '[]'::JSONB)
+  INTO var_notification_data
+  FROM (
+    SELECT *
+    FROM notification_table
+    WHERE notification_user_id = input_user_id
+    ORDER BY notification_date_created DESC
+    LIMIT input_limit
+  ) notification_data;
+
+  SELECT COALESCE(COUNT(*), 0)
+  INTO var_notification_count
+  FROM notification_table
+  WHERE
+    notification_user_id = input_user_id
+    AND notification_is_read = false;
+
+  return_data := JSONB_BUILD_OBJECT(
+    'data', var_notification_data,
+    'count', var_notification_count
+  );
+  
+  RETURN return_data;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION create_proof_of_delivery(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_attachment_data JSONB := (input_data->>'attachmentData')::JSONB;
+  input_user_id UUID := (input_data->>'userId')::UUID;
+  input_order_item_id_list JSONB := (input_data->'orderItemIds')::JSONB;
+  input_order_id UUID := (input_data->>'orderId')::UUID;
+
+  var_attachment_id UUID;
+  var_delivery_proof_id UUID;
+  var_order_item_ids UUID[];
+
+  -- snapshot of pre-update state, used for the item status log
+  var_old_item_ids UUID[];
+  var_old_item_statuses order_item_status[];
+
+  var_order_number INT;
+  var_customer_user_id UUID;
+BEGIN
+  var_order_item_ids := ARRAY(
+    SELECT JSONB_ARRAY_ELEMENTS_TEXT(input_order_item_id_list)::UUID
+  );
+
+  -- Snapshot old statuses + resolve the single parent order, before mutating anything.
+  SELECT ARRAY_AGG(order_item_id), ARRAY_AGG(order_item_status)
+  INTO var_old_item_ids, var_old_item_statuses
+  FROM order_item_table
+  WHERE order_item_id = ANY(var_order_item_ids);
+
+  INSERT INTO attachment_table (
+    attachment_bucket,
+    attachment_name,
+    attachment_path,
+    attachment_mime_type,
+    attachment_size
+  )
+  VALUES (
+    input_attachment_data->>'attachment_bucket',
+    input_attachment_data->>'attachment_name',
+    input_attachment_data->>'attachment_path',
+    input_attachment_data->>'attachment_mime_type',
+    (input_attachment_data->>'attachment_size')::BIGINT
+  )
+  RETURNING attachment_id INTO var_attachment_id;
+
+  INSERT INTO delivery_proof_table (
+    delivery_proof_attachment_id,
+    delivery_proof_processed_by_admin_user_id
+  ) VALUES (
+    var_attachment_id,
+    input_user_id
+  )
+  RETURNING delivery_proof_id
+  INTO var_delivery_proof_id;
+
+  UPDATE order_item_table
+  SET
+    order_item_delivery_proof_id = var_delivery_proof_id,
+    order_item_status = 'OUT FOR DELIVERY'
+  WHERE order_item_id = ANY(var_order_item_ids);
+
+  -- Log each item's status transition (old -> OUT FOR DELIVERY).
+  INSERT INTO order_item_status_log_table (
+    order_item_status_log_old_status,
+    order_item_status_log_new_status,
+    order_item_status_log_order_item_id,
+    order_item_status_log_created_by
+  )
+  SELECT
+    old_status,
+    'OUT FOR DELIVERY',
+    item_id,
+    input_user_id
+  FROM UNNEST(var_old_item_ids, var_old_item_statuses) AS t(item_id, old_status);
+
+  -- If every item on this order is now OUT FOR DELIVERY, cascade the order status.
+  IF NOT EXISTS (
+    SELECT 1
+    FROM order_item_table
+    WHERE order_item_order_id = input_order_id
+      AND order_item_status NOT IN ('OUT FOR DELIVERY', 'DELIVERED', 'FORFEITED', 'CANCELLED')
+  ) THEN
+    INSERT INTO order_status_log_table (
+      order_status_log_old_status,
+      order_status_log_new_status,
+      order_status_log_order_id,
+      order_status_log_updated_by
+    )
+    SELECT
+      order_status,
+      'OUT FOR DELIVERY',
+      order_id,
+      input_user_id
+    FROM order_table
+    WHERE order_id = input_order_id;
+
+    UPDATE order_table
+    SET order_status = 'OUT FOR DELIVERY'
+    WHERE order_id = input_order_id
+    RETURNING order_number, order_user_id
+    INTO var_order_number, var_customer_user_id;
+
+    INSERT INTO notification_table
+      (notification_content, notification_redirect_url, notification_type, notification_user_id)
+    VALUES
+      (
+        'Your order #' || var_order_number || ' is out for delivery and will arrive soon.',
+        '/user/orders/' || var_order_number,
+        'ORDER_FOR_DELIVERY',
+        var_customer_user_id
+      );
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION transition_to_ready_for_pickup(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_user_id UUID := (input_data->>'userId')::UUID;
+  input_order_item_id_list JSONB := (input_data->'orderItemIds')::JSONB;
+  input_order_id UUID := (input_data->>'orderId')::UUID;
+
+  var_order_item_ids UUID[];
+
+  -- snapshot of pre-update state, used for the item status log
+  var_old_item_ids UUID[];
+  var_old_item_statuses order_item_status[];
+
+  var_order_number INT;
+  var_customer_user_id UUID;
+BEGIN
+  var_order_item_ids := ARRAY(
+    SELECT JSONB_ARRAY_ELEMENTS_TEXT(input_order_item_id_list)::UUID
+  );
+
+  -- Snapshot old statuses + resolve the single parent order, before mutating anything.
+  SELECT ARRAY_AGG(order_item_id), ARRAY_AGG(order_item_status)
+  INTO var_old_item_ids, var_old_item_statuses
+  FROM order_item_table
+  WHERE order_item_id = ANY(var_order_item_ids);
+
+  UPDATE order_item_table
+  SET
+    order_item_status = 'READY FOR PICKUP'
+  WHERE order_item_id = ANY(var_order_item_ids);
+
+  -- Log each item's status transition (old -> READY FOR PICKUP).
+  INSERT INTO order_item_status_log_table (
+    order_item_status_log_old_status,
+    order_item_status_log_new_status,
+    order_item_status_log_order_item_id,
+    order_item_status_log_created_by
+  )
+  SELECT
+    old_status,
+    'READY FOR PICKUP',
+    item_id,
+    input_user_id
+  FROM UNNEST(var_old_item_ids, var_old_item_statuses) AS t(item_id, old_status);
+
+  -- If every item on this order is now READY FOR PICKUP, cascade the order status.
+  IF NOT EXISTS (
+    SELECT 1
+    FROM order_item_table
+    WHERE order_item_order_id = input_order_id
+      AND order_item_status NOT IN ('READY FOR PICKUP', 'DELIVERED', 'FORFEITED', 'CANCELLED')
+  ) THEN
+    INSERT INTO order_status_log_table (
+      order_status_log_old_status,
+      order_status_log_new_status,
+      order_status_log_order_id,
+      order_status_log_updated_by
+    )
+    SELECT
+      order_status,
+      'READY FOR PICKUP',
+      order_id,
+      input_user_id
+    FROM order_table
+    WHERE order_id = input_order_id;
+
+    UPDATE order_table
+    SET order_status = 'READY FOR PICKUP'
+    WHERE order_id = input_order_id
+    RETURNING order_number, order_user_id
+    INTO var_order_number, var_customer_user_id;
+
+    INSERT INTO notification_table
+      (notification_content, notification_redirect_url, notification_type, notification_user_id)
+    VALUES
+      (
+        'Your order #' || var_order_number || ' is ready for pickup. You may now collect it at our store.',
+        '/user/orders/' || var_order_number,
+        'ORDER_READY_FOR_PICKUP',
+        var_customer_user_id
+      );
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION transition_to_delivered(input_data JSONB)
+RETURNS VOID
+AS $$
+DECLARE
+  input_user_id UUID := (input_data->>'userId')::UUID;
+  input_order_item_id_list JSONB := (input_data->'orderItemIds')::JSONB;
+  input_order_id UUID := (input_data->>'orderId')::UUID;
+
+  var_order_item_ids UUID[];
+
+  -- snapshot of pre-update state, used for the item status log
+  var_old_item_ids UUID[];
+  var_old_item_statuses order_item_status[];
+
+  var_order_number INT;
+  var_customer_user_id UUID;
+
+  -- batches touched by the items being transitioned in this call
+  var_affected_batch_ids UUID[];
+  var_batch_id UUID;
+BEGIN
+  var_order_item_ids := ARRAY(
+    SELECT JSONB_ARRAY_ELEMENTS_TEXT(input_order_item_id_list)::UUID
+  );
+
+  -- Snapshot old statuses before mutating anything.
+  SELECT ARRAY_AGG(order_item_id), ARRAY_AGG(order_item_status)
+  INTO var_old_item_ids, var_old_item_statuses
+  FROM order_item_table
+  WHERE order_item_id = ANY(var_order_item_ids);
+
+  -- Batch(es), if any, that the items being transitioned belong to.
+  SELECT ARRAY_AGG(DISTINCT order_item_batch_id)
+  INTO var_affected_batch_ids
+  FROM order_item_table
+  WHERE order_item_id = ANY(var_order_item_ids)
+    AND order_item_batch_id IS NOT NULL;
+
+  UPDATE order_item_table
+  SET
+    order_item_status = 'DELIVERED'
+  WHERE order_item_id = ANY(var_order_item_ids)
+    -- guard against transitioning items that aren't actually in a deliverable stage
+    AND order_item_status IN ('OUT FOR DELIVERY', 'READY FOR PICKUP');
+
+  -- Log each item's status transition (old -> DELIVERED).
+  INSERT INTO order_item_status_log_table (
+    order_item_status_log_old_status,
+    order_item_status_log_new_status,
+    order_item_status_log_order_item_id,
+    order_item_status_log_created_by
+  )
+  SELECT
+    old_status,
+    'DELIVERED',
+    item_id,
+    input_user_id
+  FROM UNNEST(var_old_item_ids, var_old_item_statuses) AS t(item_id, old_status);
+
+  -- If every item on this order is now DELIVERED (ignoring FORFEITED/CANCELLED), cascade the order status.
+  IF NOT EXISTS (
+    SELECT 1
+    FROM order_item_table
+    WHERE order_item_order_id = input_order_id
+      AND order_item_status NOT IN ('DELIVERED', 'FORFEITED', 'CANCELLED')
+  ) THEN
+    INSERT INTO order_status_log_table (
+      order_status_log_old_status,
+      order_status_log_new_status,
+      order_status_log_order_id,
+      order_status_log_updated_by
+    )
+    SELECT
+      order_status,
+      'DELIVERED',
+      order_id,
+      input_user_id
+    FROM order_table
+    WHERE order_id = input_order_id;
+
+    UPDATE order_table
+    SET order_status = 'DELIVERED'
+    WHERE order_id = input_order_id
+    RETURNING order_number, order_user_id
+    INTO var_order_number, var_customer_user_id;
+
+    INSERT INTO notification_table
+      (notification_content, notification_redirect_url, notification_type, notification_user_id)
+    VALUES
+      (
+        'Your order #' || var_order_number || ' has been successfully delivered. Thank you for shopping with us!',
+        '/user/orders/' || var_order_number,
+        'ORDER_DELIVERED',
+        var_customer_user_id
+      );
+  END IF;
+
+  -- For each batch touched by this transition, if every item in that batch has
+  -- reached a terminal state (ignoring FORFEITED/CANCELLED), mark the batch DELIVERED.
+  IF var_affected_batch_ids IS NOT NULL THEN
+    FOREACH var_batch_id IN ARRAY var_affected_batch_ids
+    LOOP
+      IF NOT EXISTS (
+        SELECT 1
+        FROM order_item_table
+        WHERE order_item_batch_id = var_batch_id
+          AND order_item_status NOT IN ('DELIVERED', 'FORFEITED', 'CANCELLED')
+      ) THEN
+        INSERT INTO batch_status_log_table (
+          batch_status_log_old_status,
+          batch_status_log_new_status,
+          batch_status_log_batch_id,
+          batch_status_log_created_by
+        )
+        SELECT
+          batch_status,
+          'COMPLETED',
+          batch_id,
+          input_user_id
+        FROM batch_table
+        WHERE batch_id = var_batch_id;
+
+        UPDATE batch_table
+        SET batch_status = 'COMPLETED'
+        WHERE batch_id = var_batch_id;
+      END IF;
+    END LOOP;
+  END IF;
 END;
 $$ LANGUAGE plpgsql;

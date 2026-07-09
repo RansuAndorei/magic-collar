@@ -3,17 +3,21 @@ import {
   IconCar,
   IconCash,
   IconChartBar,
+  IconCheck,
   IconCircleCheck,
   IconClipboardList,
   IconClockHour4,
+  IconCreditCard,
   IconHeadset,
   IconMapPin,
   IconPackage,
   IconPackageExport,
+  IconPackageOff,
   IconPackages,
   IconPhone,
   IconPhotoScan,
   IconReceipt,
+  IconRosetteDiscountCheck,
   IconSettings2,
   IconShieldCheck,
   IconShip,
@@ -280,7 +284,7 @@ export const ORDER_STATUS_METADATA: StatusMetadata<OrderStatusEnum> = {
     description: "The order is being processed and prepared for fulfillment.",
     icon: IconClockHour4,
   },
-  "FOR DELIVERY": {
+  "OUT FOR DELIVERY": {
     color: "blue",
     description: "The order has been dispatched and is on its way to the customer.",
     icon: IconTruckDelivery,
@@ -320,7 +324,7 @@ export const ORDER_ITEM_STATUS_METADATA: StatusMetadata<OrderItemStatusEnum> = {
       "The item is available in stock and reserved for this order. It is ready to proceed to delivery or pickup once all requirements, including payment, have been completed.",
     icon: IconPackages,
   },
-  "FOR DELIVERY": {
+  "OUT FOR DELIVERY": {
     color: "blue",
     description: "The item has been dispatched and is on its way to the customer.",
     icon: IconTruckDelivery,
@@ -406,6 +410,12 @@ export const BATCH_STATUS_METADATA: StatusMetadata<BatchStatusEnum> = {
     description: "The batch has arrived and orders are ready to be shipped to customers.",
     icon: IconPackage,
   },
+  COMPLETED: {
+    color: "teal",
+    description:
+      "All items in this batch have been successfully delivered or picked up, and the batch has been completed.",
+    icon: IconCircleCheck,
+  },
   CANCELLED: {
     color: "red",
     description: "The batch has been cancelled and will not proceed.",
@@ -419,7 +429,7 @@ export const ORDER_STATUS_OPTIONS: {
 }[] = [
   { value: "ALL", label: "All" },
   { value: "PENDING", label: "Pending" },
-  { value: "FOR DELIVERY", label: "For Delivery" },
+  { value: "OUT FOR DELIVERY", label: "Out for Delivery" },
   { value: "READY FOR PICKUP", label: "Ready for Pickup" },
   { value: "DELIVERED", label: "Delivered" },
   { value: "FORFEITED", label: "Forfeited" },
@@ -448,6 +458,7 @@ export const BATCH_STATUS_OPTIONS: { value: BatchStatusEnum | "ALL"; label: stri
   { value: "ENROUTE", label: "Enroute" },
   { value: "CUSTOMS CLEARANCE", label: "Customs Clearance" },
   { value: "READY FOR SHIPPING", label: "Ready For Shipping" },
+  { value: "COMPLETED", label: "Completed" },
   { value: "CANCELLED", label: "Cancelled" },
 ];
 
@@ -561,3 +572,53 @@ export const REASON_FOR_REJECTION_OPTION = [
 ];
 
 export const MAX_ADDRESSES = 5;
+
+export const NOTIFICATION_CONFIG = {
+  PAYMENT_REMINDER: {
+    title: "Payment Reminder",
+    color: "yellow",
+    icon: IconCreditCard,
+  },
+  PAYMENT_PROOF_APPROVED: {
+    title: "Payment Approved",
+    color: "green",
+    icon: IconCheck,
+  },
+  PAYMENT_PROOF_REJECTED: {
+    title: "Payment Rejected",
+    color: "red",
+    icon: IconX,
+  },
+  PAYMENT_FULLY_PAID: {
+    title: "Payment Completed",
+    color: "teal",
+    icon: IconRosetteDiscountCheck,
+  },
+  ORDER_FOR_DELIVERY: {
+    title: "Out for Delivery",
+    color: "blue",
+    icon: IconTruckDelivery,
+  },
+  ORDER_READY_FOR_PICKUP: {
+    title: "Ready for Pickup",
+    color: "cyan",
+    icon: IconPackage,
+  },
+  ORDER_DELIVERED: {
+    title: "Order Delivered",
+    color: "green",
+    icon: IconPackageExport,
+  },
+  ORDER_CANCELLED: {
+    title: "Order Cancelled",
+    color: "gray",
+    icon: IconPackageOff,
+  },
+  ORDER_FORFEITED: {
+    title: "Order Forfeited",
+    color: "orange",
+    icon: IconAlertTriangle,
+  },
+};
+
+export const NOTIFICATION_LIMIT = 10;

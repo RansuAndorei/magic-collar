@@ -14,6 +14,7 @@ INSERT INTO storage.buckets(id, name) VALUES ('CARS', 'CARS');
 INSERT INTO storage.buckets(id, name) VALUES ('USER_AVATARS', 'USER_AVATARS');
 INSERT INTO storage.buckets(id, name) VALUES ('PAYMENT_PROOFS', 'PAYMENT_PROOFS');
 INSERT INTO storage.buckets(id, name) VALUES ('PAYMENT_CHANNEL_QR', 'PAYMENT_CHANNEL_QR');
+INSERT INTO storage.buckets(id, name) VALUES ('PROOF_OF_DELIVERY', 'PROOF_OF_DELIVERY');
 
 UPDATE storage.buckets SET public = true;
 
@@ -29,12 +30,13 @@ CREATE TYPE batch_status AS ENUM(
   'ENROUTE',
   'CUSTOMS CLEARANCE',
   'READY FOR SHIPPING',
+  'COMPLETED',
   'CANCELLED'
 );
 
 CREATE TYPE order_status AS ENUM (
   'PENDING',
-  'FOR DELIVERY',
+  'OUT FOR DELIVERY',
   'READY FOR PICKUP',
   'DELIVERED',
   'FORFEITED',
@@ -44,7 +46,7 @@ CREATE TYPE order_status AS ENUM (
 CREATE TYPE order_item_status AS ENUM (
   'PENDING',
   'IN STOCK',
-  'FOR DELIVERY',
+  'OUT FOR DELIVERY',
   'READY FOR PICKUP',
   'DELIVERED',
   'FORFEITED',
@@ -91,6 +93,19 @@ CREATE TYPE order_payment_request_status AS ENUM (
   'PENDING',
   'APPROVED',
   'REJECTED'
+);
+
+CREATE TYPE notification_type AS ENUM (
+  'PAYMENT_REMINDER',
+  'PAYMENT_PROOF_APPROVED',
+  'PAYMENT_PROOF_REJECTED',
+  'PAYMENT_FULLY_PAID',
+
+  'ORDER_FOR_DELIVERY',
+  'ORDER_READY_FOR_PICKUP',
+  'ORDER_DELIVERED',
+  'ORDER_CANCELLED',
+  'ORDER_FORFEITED'
 );
 
 CREATE SEQUENCE magic_collar_number_seq START 1000;
@@ -304,7 +319,8 @@ CREATE TABLE batch_table(
   batch_date_created TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   batch_date_updated TIMESTAMPTZ,
   batch_is_disabled BOOLEAN DEFAULT false NOT NULL,
-  batch_status batch_status DEFAULT 'PENDING' NOT NULL
+  batch_status batch_status DEFAULT 'PENDING' NOT NULL,
+  batch_limit INT NOT NULL
 );
 
 CREATE TABLE batch_status_log_table(
@@ -314,14 +330,13 @@ CREATE TABLE batch_status_log_table(
   batch_status_log_new_status batch_status NOT NULL,
 
   batch_status_log_batch_id UUID REFERENCES batch_table(batch_id) NOT NULL,
-  batch_status_log_updated_by UUID REFERENCES user_table(user_id)
+  batch_status_log_created_by UUID REFERENCES user_table(user_id)
 );
 
 CREATE TABLE order_table(
   order_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY NOT NULL,
   order_number INT DEFAULT nextval('order_number_seq') UNIQUE NOT NULL,
   order_date_created TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  order_date_updated TIMESTAMPTZ,
   order_is_disabled BOOLEAN DEFAULT false NOT NULL,
   order_status order_status DEFAULT 'PENDING' NOT NULL,
   order_payment_status order_payment_status DEFAULT 'PENDING' NOT NULL,
@@ -357,10 +372,17 @@ CREATE TABLE order_status_log_table(
   order_status_log_updated_by UUID REFERENCES user_table(user_id)
 );
 
+CREATE TABLE delivery_proof_table(
+  delivery_proof_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY NOT NULL,
+  delivery_proof_date_created TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+
+  delivery_proof_attachment_id UUID REFERENCES attachment_table(attachment_id) NOT NULL,
+  delivery_proof_processed_by_admin_user_id UUID REFERENCES user_table(user_id) NOT NULL
+);
+
 CREATE TABLE order_item_table(
   order_item_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY NOT NULL,
   order_item_date_created TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  order_item_date_updated TIMESTAMPTZ,
   order_item_is_disabled BOOLEAN DEFAULT false NOT NULL,
   order_item_status order_item_status DEFAULT 'PENDING' NOT NULL,
   order_item_quantity INT NOT NULL,
@@ -383,6 +405,7 @@ CREATE TABLE order_item_table(
   order_item_car_image_attachment_id UUID REFERENCES attachment_table(attachment_id) NOT NULL,
   order_item_order_id UUID REFERENCES order_table(order_id) NOT NULL,
   order_item_batch_id UUID REFERENCES batch_table(batch_id),
+  order_item_delivery_proof_id UUID REFERENCES delivery_proof_table(delivery_proof_id),
 
   CONSTRAINT order_item_quantity_check CHECK (order_item_quantity > 0)
 );
@@ -394,7 +417,7 @@ CREATE TABLE order_item_status_log_table(
   order_item_status_log_new_status order_item_status NOT NULL,
 
   order_item_status_log_order_item_id UUID REFERENCES order_item_table(order_item_id) NOT NULL,
-  order_item_status_log_updated_by UUID REFERENCES user_table(user_id)
+  order_item_status_log_created_by UUID REFERENCES user_table(user_id)
 );
 
 CREATE TABLE checkout_table(
@@ -484,6 +507,17 @@ CREATE TABLE courier_table(
 
   courier_created_by_admin_user_id UUID REFERENCES user_table(user_id) NOT NULL,
   courier_updated_by_admin_user_id UUID REFERENCES user_table(user_id)
+);
+
+CREATE TABLE notification_table(
+  notification_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY NOT NULL,
+  notification_date_created TIMESTAMPTZ DEFAULT now() NOT NULL,
+  notification_content TEXT NOT NULL,
+  notification_is_read BOOLEAN DEFAULT false NOT NULL,
+  notification_redirect_url TEXT,
+  notification_type TEXT NOT NULL,
+
+  notification_user_id UUID REFERENCES user_table(user_id) NOT NULL
 );
 
 GRANT ALL ON ALL TABLES IN SCHEMA public TO PUBLIC;

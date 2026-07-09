@@ -46,7 +46,7 @@ import {
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { transitionBatchStatus } from "../../actions";
 
 type BatchOrder = AdminBatchOrderItem["order_item_order"] & {
@@ -57,10 +57,9 @@ type BatchOrder = AdminBatchOrderItem["order_item_order"] & {
 
 type Props = {
   batch: AdminBatchDetail;
-  batchLimit: number;
 };
 
-const AdminBatchDetailPage = ({ batch, batchLimit }: Props) => {
+const AdminBatchDetailPage = ({ batch }: Props) => {
   const router = useRouter();
   const userData = useUserData();
   const pathname = usePathname();
@@ -69,6 +68,9 @@ const AdminBatchDetailPage = ({ batch, batchLimit }: Props) => {
   const Icon = BATCH_STATUS_METADATA[batch.batch_status].icon;
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  const loading = isLoading || isPending;
 
   const orders = useMemo(() => {
     const orderMap = new Map<string, BatchOrder>();
@@ -94,8 +96,7 @@ const AdminBatchDetailPage = ({ batch, batchLimit }: Props) => {
     return Array.from(orderMap.values()).sort((a, b) => b.order_number - a.order_number);
   }, [batch.batch_order_item]);
 
-  const progressValue =
-    batchLimit > 0 ? Math.min((batch.batch_order_quantity / batchLimit) * 100, 100) : 0;
+  const progressValue = Math.min((batch.batch_order_quantity / batch.batch_limit) * 100, 100);
 
   const handleStatusTransition = async (batchId: string, nextStatus: BatchStatusEnum) => {
     if (!userData) return;
@@ -110,7 +111,9 @@ const AdminBatchDetailPage = ({ batch, batchLimit }: Props) => {
         color: "green",
         message: `Batch moved to ${nextStatus}`,
       });
-      router.refresh();
+      startTransition(() => {
+        router.refresh();
+      });
     } catch (e) {
       notifications.show({
         message: "Something went wrong. Please try again later.",
@@ -210,7 +213,7 @@ const AdminBatchDetailPage = ({ batch, batchLimit }: Props) => {
               color={BATCH_STATUS_METADATA[nextStatus].color}
               leftSection={Icon && <Icon size={14} />}
               onClick={() => statusTransitionConfirmation(batch.batch_id, batch.batch_status)}
-              loading={isLoading}
+              loading={loading}
             >
               Move to {nextStatus}
             </Button>
@@ -233,14 +236,14 @@ const AdminBatchDetailPage = ({ batch, batchLimit }: Props) => {
           </Text>
           <Text fw={800} fz={28}>
             {batch.batch_order_quantity}
-            {batch.batch_status === "PENDING" && batchLimit > 0 ? (
+            {batch.batch_status === "PENDING" && batch.batch_limit > 0 ? (
               <Text span c="dimmed" fz="md" fw={600}>
                 {" "}
-                / {batchLimit}
+                / {batch.batch_limit}
               </Text>
             ) : null}
           </Text>
-          {batch.batch_status === "PENDING" && batchLimit > 0 ? (
+          {batch.batch_status === "PENDING" && batch.batch_limit > 0 ? (
             <Progress value={progressValue} mt="xs" striped animated />
           ) : null}
         </Paper>
@@ -320,6 +323,7 @@ const AdminBatchDetailPage = ({ batch, batchLimit }: Props) => {
                             variant="subtle"
                             color="gray"
                             size="sm"
+                            target="_blank"
                           >
                             <IconExternalLink size={16} />
                           </ActionIcon>

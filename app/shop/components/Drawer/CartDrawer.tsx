@@ -1,4 +1,3 @@
-import { MAX_QUANTITY } from "@/utils/constants";
 import {
   formatCurrency,
   getProductSubtitle,
@@ -15,7 +14,6 @@ import {
   Drawer,
   Flex,
   Group,
-  NumberInput,
   rem,
   ScrollArea,
   Stack,
@@ -24,15 +22,9 @@ import {
   useComputedColorScheme,
   useMantineTheme,
 } from "@mantine/core";
-import {
-  IconEngine,
-  IconMinus,
-  IconPlus,
-  IconShoppingCart,
-  IconShoppingCartX,
-  IconTrash,
-} from "@tabler/icons-react";
+import { IconEngine, IconShoppingCart, IconShoppingCartX, IconTrash } from "@tabler/icons-react";
 import Image from "next/image";
+import QuantityInput from "./QuantityInput";
 
 type Props = {
   opened: boolean;
@@ -55,6 +47,7 @@ const CartDrawer = ({
 }: Props) => {
   const { colors } = useMantineTheme();
   const isDark = useComputedColorScheme() === "dark";
+
   const totalItems = items.reduce((total, item) => total + item.quantity, 0);
   const totalPrice = items.reduce(
     (total, item) => total + item.product.car_magic_collar.magic_collar_price * item.quantity,
@@ -187,35 +180,10 @@ const CartDrawer = ({
                           </ActionIcon>
                         </Group>
                         <Group justify="space-between" align="center">
-                          <Group gap={4}>
-                            <ActionIcon
-                              variant="light"
-                              color="gray"
-                              size="sm"
-                              onClick={() => onQuantityChange(car_id, quantity - 1)}
-                              aria-label="Decrease quantity"
-                            >
-                              <IconMinus size={14} />
-                            </ActionIcon>
-                            <NumberInput
-                              value={quantity}
-                              onChange={(value) => onQuantityChange(car_id, Number(value) || 1)}
-                              min={1}
-                              max={MAX_QUANTITY}
-                              maxLength={`${MAX_QUANTITY}`.length}
-                              w={64}
-                              hideControls
-                            />
-                            <ActionIcon
-                              variant="light"
-                              color="gray"
-                              size="sm"
-                              onClick={() => onQuantityChange(car_id, quantity + 1)}
-                              aria-label="Increase quantity"
-                            >
-                              <IconPlus size={14} />
-                            </ActionIcon>
-                          </Group>
+                          <QuantityInput
+                            quantity={quantity}
+                            onQuantityChange={(value) => onQuantityChange(car_id, value)}
+                          />
                           <Text fw={700} size="sm">
                             {formatCurrency(car_magic_collar.magic_collar_price * quantity, {
                               currency: car_magic_collar.magic_collar_price_currency,

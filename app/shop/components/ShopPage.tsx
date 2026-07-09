@@ -328,8 +328,7 @@ const ShopPage = ({ makeList, modelList, carList }: Props) => {
   );
 
   const handleCartQuantityChange = useCallback((carId: string, quantity: number) => {
-    const nextQuantity = Math.max(1, Math.floor(quantity));
-    if (nextQuantity > MAX_QUANTITY) return;
+    const nextQuantity = Math.min(MAX_QUANTITY, Math.max(1, Math.floor(quantity)));
     setCartItems((currentItems) =>
       currentItems.map((item) =>
         item.product.car_id === carId ? { ...item, quantity: nextQuantity } : item,

@@ -1,15 +1,14 @@
 import { Database } from "@/utils/database";
-import { BatchStatusLogTableRow } from "@/utils/types";
+import { AttachmentTableInsert, BatchStatusLogTableRow } from "@/utils/types";
 import { SupabaseClient } from "@supabase/supabase-js";
 
 export const getCustomerOrder = async (
   supabaseClient: SupabaseClient<Database>,
   params: {
-    userId: string;
     orderNumber: number;
   },
 ) => {
-  const { userId, orderNumber } = params;
+  const { orderNumber } = params;
 
   const { data, error } = await supabaseClient
     .from("order_table")
@@ -19,11 +18,14 @@ export const getCustomerOrder = async (
         order_item: order_item_table(
           *,
           order_item_car_image_attachment: order_item_car_image_attachment_id!inner(*),
-          order_item_batch: order_item_batch_id(*)
+          order_item_batch: order_item_batch_id(*),
+          order_item_delivery_proof: order_item_delivery_proof_id(
+            *,
+            delivery_proof_attachment: attachment_table!inner(*)
+          )
         )
       `,
     )
-    .eq("order_user_id", userId)
     .eq("order_number", orderNumber)
     .eq("order_is_disabled", false)
     .eq("order_item_table.order_item_is_disabled", false)
@@ -183,4 +185,45 @@ export const fetchOrderItemTimeline = async (
     itemLogs: itemLogs ?? [],
     batchLogs,
   };
+};
+
+export const createProofOfDelivery = async (
+  supabaseClient: SupabaseClient<Database>,
+  params: {
+    attachmentData: AttachmentTableInsert;
+    userId: string;
+    orderItemIds: string[];
+    orderId: string;
+  },
+) => {
+  const { error } = await supabaseClient.rpc("create_proof_of_delivery", { input_data: params });
+  if (error) throw error;
+};
+
+export const transitionToReadyForPickup = async (
+  supabaseClient: SupabaseClient<Database>,
+  params: {
+    userId: string;
+    orderItemIds: string[];
+    orderId: string;
+  },
+) => {
+  const { error } = await supabaseClient.rpc("transition_to_ready_for_pickup", {
+    input_data: params,
+  });
+  if (error) throw error;
+};
+
+export const transitionToDelivered = async (
+  supabaseClient: SupabaseClient<Database>,
+  params: {
+    userId: string;
+    orderItemIds: string[];
+    orderId: string;
+  },
+) => {
+  const { error } = await supabaseClient.rpc("transition_to_delivered", {
+    input_data: params,
+  });
+  if (error) throw error;
 };

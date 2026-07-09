@@ -29,7 +29,6 @@ const Page = async ({ params }: Props) => {
   try {
     [order, paymentChannelList, approvedPaymentTotal] = await Promise.all([
       getCustomerOrder(supabaseClient, {
-        userId: user.id,
         orderNumber,
       }),
       getPaymentChannelList(supabaseClient),

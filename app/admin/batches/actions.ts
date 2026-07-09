@@ -24,16 +24,6 @@ export const getAdminBatchesPage = async (
   };
 };
 
-export const getBatchLimit = async (supabaseClient: SupabaseClient<Database>) => {
-  const { data, error } = await supabaseClient
-    .from("system_setting_table")
-    .select("system_setting_value")
-    .eq("system_setting_key", "BATCH_LIMIT")
-    .single();
-  if (error) throw error;
-  return Number(data.system_setting_value) || 0;
-};
-
 export const transitionBatchStatus = async (
   supabaseClient: SupabaseClient<Database>,
   params: {
