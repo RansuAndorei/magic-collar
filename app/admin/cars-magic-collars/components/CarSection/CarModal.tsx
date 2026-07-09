@@ -1,5 +1,6 @@
 import { insertError, uploadFile } from "@/app/actions";
 import { useUserData } from "@/stores/useUserStore";
+import { TEXT_LIMITS } from "@/utils/constants";
 import { formatCurrency, isAppError } from "@/utils/functions";
 import { supabaseClient } from "@/utils/supabase/client";
 import { AttachmentTableInsert, CarFormType, MagicCollarTableRow } from "@/utils/types";
@@ -420,7 +421,12 @@ const CarModalForm = ({
             name="modelCode"
             control={control}
             render={({ field }) => (
-              <TextInput label="Model Code" error={errors.modelCode?.message} {...field} />
+              <TextInput
+                {...field}
+                label="Model Code"
+                error={errors.modelCode?.message}
+                maxLength={TEXT_LIMITS.short}
+              />
             )}
           />
 

@@ -288,6 +288,7 @@ const ProcessPage = () => {
                       }));
                     }}
                     error={errors[key]}
+                    maxLength={5}
                   />
                 ),
               )}

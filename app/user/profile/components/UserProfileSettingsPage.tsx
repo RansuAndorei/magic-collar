@@ -2,7 +2,7 @@
 
 import { insertError, uploadFile } from "@/app/actions";
 import { useUserActions, useUserData, useUserProfile } from "@/stores/useUserStore";
-import { MAX_FILE_SIZE } from "@/utils/constants";
+import { MAX_FILE_SIZE, TEXT_LIMITS } from "@/utils/constants";
 import dayjs from "@/utils/dayjs";
 import { generateAvatarColor, isAppError } from "@/utils/functions";
 import { supabaseClient } from "@/utils/supabase/client";
@@ -294,7 +294,7 @@ const UserProfileSettingsPage = ({ regionList }: Props) => {
                     </Group>
 
                     <TextInput
-                      label="Email Address"
+                      label="Email"
                       placeholder="your.email@example.com"
                       value={userProfileData.user_email}
                       onChange={(e) => {
@@ -305,6 +305,7 @@ const UserProfileSettingsPage = ({ regionList }: Props) => {
                       type="email"
                       readOnly
                       variant="filled"
+                      maxLength={TEXT_LIMITS.medium}
                     />
 
                     <TextInput

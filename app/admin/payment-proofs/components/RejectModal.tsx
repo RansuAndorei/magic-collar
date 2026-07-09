@@ -1,4 +1,4 @@
-import { REASON_FOR_REJECTION_OPTION } from "@/utils/constants";
+import { REASON_FOR_REJECTION_OPTION, TEXT_LIMITS } from "@/utils/constants";
 import { AdminPaymentProof } from "@/utils/types";
 import {
   ActionIcon,
@@ -84,6 +84,7 @@ const RejectModal = ({ opened, onClose, selectedProof, onReject }: Props) => {
             minRows={4}
             autosize
             required
+            maxLength={TEXT_LIMITS.text}
           />
         )}
         <Group justify="flex-end">
